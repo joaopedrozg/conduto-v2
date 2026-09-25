@@ -2,12 +2,14 @@
 
 > **The pipe that carries your data from source to destination.**
 
-🇺🇸 **English** · [Português (BR)](https://github.com/joaopedrozg/conduto/blob/main/README.md)
+🇺🇸 **English** · [Português (BR)](https://github.com/joaopedrozg/conduto-v2/blob/main/README.md)
+
+> **Repository of the new version.** The stable line (**1.1.42**) stays at [joaopedrozg/conduto](https://github.com/joaopedrozg/conduto) — this repo is where the next version is being built.
 
 [![PyPI](https://img.shields.io/pypi/v/conduto?label=pypi)](https://pypi.org/project/conduto/)
 ![Python](https://img.shields.io/pypi/pyversions/conduto)
 ![License](https://img.shields.io/pypi/l/conduto)
-![CI](https://github.com/joaopedrozg/conduto/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/joaopedrozg/conduto-v2/actions/workflows/ci.yml/badge.svg)
 
 `conduto` is a CLI that scaffolds a **complete ELT project in a single command**: credentials for both ends in the `.env`, YAML schemas for the tables, DDL in the target database and Dagster code (assets + schedules) ready to run.
 
@@ -16,7 +18,7 @@
 - **Source and target:** PostgreSQL, MySQL, SQL Server, ClickHouse, DuckDB and Delta Lake
 - **Orchestration:** Dagster (independent assets, per-table schedules, web UI)
 - **Install:** `pip install "conduto[postgresql]"` (drivers per database)
-- **Code:** [github.com/joaopedrozg/conduto](https://github.com/joaopedrozg/conduto) · **Issues:** [open an issue](https://github.com/joaopedrozg/conduto/issues)
+- **Code:** [github.com/joaopedrozg/conduto-v2](https://github.com/joaopedrozg/conduto-v2) · **Issues:** [open an issue](https://github.com/joaopedrozg/conduto-v2/issues)
 
 ---
 
@@ -477,7 +479,7 @@ Supported versions: 18 (default) and 17 (`-Version 17`). Official documentation:
 
 ## Development
 
-> This README also exists in Portuguese, in [`README.md`](https://github.com/joaopedrozg/conduto/blob/main/README.md) — an absolute link on purpose, because this is the file PyPI renders (`readme = "README.en.md"` in `pyproject.toml`), and relative links would break there. When you edit one, update the other; CI fails if the two drift apart.
+> This README also exists in Portuguese, in [`README.md`](https://github.com/joaopedrozg/conduto-v2/blob/main/README.md) — an absolute link on purpose, because this is the file PyPI renders (`readme = "README.en.md"` in `pyproject.toml`), and relative links would break there. When you edit one, update the other; CI fails if the two drift apart.
 
 ```bash
 uv sync --all-extras   # project + drivers for every database + dev (pytest)

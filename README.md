@@ -4,10 +4,12 @@
 
 🇺🇸 [English](README.en.md) · 🇧🇷 **Português (BR)**
 
+> **Repositório da nova versão.** A linha estável (**1.1.42**) continua em [joaopedrozg/conduto](https://github.com/joaopedrozg/conduto) — este repo é onde a próxima versão está sendo construída.
+
 [![PyPI](https://img.shields.io/pypi/v/conduto?label=pypi)](https://pypi.org/project/conduto/)
 ![Python](https://img.shields.io/pypi/pyversions/conduto)
 ![Licença](https://img.shields.io/pypi/l/conduto)
-![CI](https://github.com/joaopedrozg/conduto/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/joaopedrozg/conduto-v2/actions/workflows/ci.yml/badge.svg)
 
 `conduto` é uma CLI que monta um **projeto ELT completo em um único comando**: credenciais das duas pontas no `.env`, schemas YAML das tabelas, DDL no banco de destino e código Dagster (assets + schedules) pronto para rodar.
 
@@ -16,7 +18,7 @@
 - **Origem e destino:** PostgreSQL, MySQL, SQL Server, ClickHouse, DuckDB e Delta Lake
 - **Orquestração:** Dagster (assets independentes, schedules por tabela, interface web)
 - **Instalação:** `pip install "conduto[postgresql]"` (drivers por SGBD)
-- **Código:** [github.com/joaopedrozg/conduto](https://github.com/joaopedrozg/conduto) · **Issues:** [abrir uma issue](https://github.com/joaopedrozg/conduto/issues)
+- **Código:** [github.com/joaopedrozg/conduto-v2](https://github.com/joaopedrozg/conduto-v2) · **Issues:** [abrir uma issue](https://github.com/joaopedrozg/conduto-v2/issues)
 
 ---
 
