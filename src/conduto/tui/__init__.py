@@ -13,6 +13,7 @@ from conduto.tui.modelo import (
     para_choice,
     valores_de,
 )
+from conduto.tui.dashboard import CondutoApp, FormularioConexao, PaginaInicial, TelaConexoes
 from conduto.tui.prompts import (
     confirmar,
     multi_selecionar,
@@ -29,8 +30,12 @@ __all__ = [
     "MULTIPLA",
     "UNICA",
     "Choice",
+    "CondutoApp",
+    "FormularioConexao",
     "ModeloSelecao",
+    "PaginaInicial",
     "Status",
+    "TelaConexoes",
     "confirmar",
     "cor",
     "glifo",

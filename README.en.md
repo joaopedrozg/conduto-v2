@@ -27,7 +27,7 @@
 1. [Installation](#installation)
 2. [Quick start](#quick-start)
 3. [The commands](#the-commands)
-4. [The interactive wizard](#the-interactive-wizard)
+4. [The interface](#the-interface)
 5. [What gets generated](#what-gets-generated)
 6. [How data is loaded](#how-data-is-loaded)
 7. [Configuration reference](#configuration-reference)
@@ -83,28 +83,18 @@ The prompt "Install on the system Python anyway?" defaults to **no** — nothing
 ## Quick start
 
 ```bash
-# 1. Creates the project: connections in .env, schemas/ and main.yml
+# Creates the project: opens the UI (connections, schemas, review)
 conduto init my_project
 
-# 2. Generates the table DDL and applies it to the target database
-conduto ddl --apply
-
-# 3. Generates the schedules and the Dagster code
-conduto schedules
-
-# 4. Starts the Dagster server (http://localhost:3000)
-conduto dagster
-
-# 5. Web documentation of the project (http://localhost:8000)
-conduto docs
+# Manages the current project: overview, DDL, schedules, servers
+conduto init .
 ```
 
-Check the version and the help:
+Everything else runs inside the UI, in the **F1** palette (DDL, schedules, infer, Dagster, docs...). Check the version and the help:
 
 ```bash
 conduto --version
 conduto --help
-conduto [COMMAND] --help
 ```
 
 ### What `conduto init` asks
@@ -119,6 +109,8 @@ The flow is interactive and guided — you never type database or table names by
 6. **Schema mode** — generate automatically (you check the source schemas and tables) or configure manually (generates three examples for you to edit)
 7. **Schedules** — whether to generate each table's schedule automatically (default: hourly) and the Dagster code
 8. **Dagster server** — whether to start it now and generate the `run_dagster.ps1` / `run_dagster.sh` scripts
+
+**Managing?** `conduto init .` (or `conduto init` inside the project) opens manage mode: health overview, `.env` connections to test/save, DDL, schedules, infer and servers — everything with on-screen logs, and the **F1** palette lists each command.
 
 **Inside an existing uv project?** If the current directory already has a `pyproject.toml` (for example after `uv add conduto`), conduto adapts: it writes `.env`, `main.yml` and `schemas/` straight into the current project and adds only the missing dependencies — no subfolder, no `uv init`. In that case use `uv run conduto init` (the project name becomes optional).
 
@@ -155,14 +147,10 @@ The command reads the source credentials from the `.env`, queries the database a
 
 | Command | What it does | Main options |
 | --- | --- | --- |
-| `conduto init [NAME]` | Creates/updates the project: `.env`, `schemas/`, `main.yml`, uv environment, schedules and Dagster code | — |
-| `conduto ddl` | Converts the YAML schemas into `CREATE TABLE` for the target | `--apply` / `--no-apply`, `--output file.sql`, `--dir` |
-| `conduto schedules` | (Re)generates the schema schedules and the Dagster code | `--dir` |
-| `conduto dagster` | Starts the project's Dagster server (http://localhost:3000) | `--dir` |
-| `conduto docs` | Starts the project's web documentation (http://localhost:8000) | `--port`, `--host`, `--no-open`, `--dir` |
-| `conduto inferir` | Infers the columns of the tables in the source database | `--tabela`, `--dir` |
-| `conduto install-sqlserver-driver` | Downloads and installs the ODBC Driver for SQL Server (Windows, Linux, macOS) | — |
-| `conduto --help` | General help; `conduto [COMMAND] --help` shows each command's options | — |
+| `conduto init [NAME]` | Opens the UI: creates a new project or manages the current one (`.env`, `schemas/`, `main.yml`, Dagster...) | `.` = current directory |
+| Built-in commands (**F1** palette) | DDL, schedules, infer, Dagster, docs and drivers — run inside the UI, with on-screen logs | — |
+| `conduto ddl`, `schedules`... | The same commands, hidden from help: still work directly for scripts and CI | the usual ones |
+| `conduto --help` | Short help: only shows how to start a project | — |
 
 Global flags: `--lang pt|en` (language for the run) and `--version`.
 
@@ -194,17 +182,17 @@ The page shows the project overview, the file tree, the `.env` connections (pass
 
 ---
 
-## The interactive wizard
+## The interface
 
-In the terminal, `conduto init` and `conduto ddl` run inside a **TUI screen** (Textual):
+`conduto init` opens a **terminal SPA** (Textual) in two modes: `init my_project` **creates**, `init .` (or `init` inside the project) **manages**:
 
-- **Side menu of steps** with the state of each one: current (● blue), done (✓ green), skipped (— gray) or pending (○);
-- **Review**: clicking a completed step shows what was answered there, without rerunning the flow;
-- **Log panel** with what the command is doing, without flashing old logs on every step change;
-- **Logs in SQLite**: all output is kept in `~/.conduto/registros.db` and opens with **`F3`**, with timestamp, step and scrolling — the output is also replayed in the terminal when the shell closes;
-- **Footer shortcuts**: `F2` toggles the step menu, `F3` opens the logs, `esc` goes back;
-- **Colors are status**: green = success, amber = attention, red = error, blue = information, gray = neutral;
-- Loading widgets (spinner and progress bar) on slow operations such as the connection test and applying the DDL.
+- **Header** with the brand, the version and the context (creating `demo` / managing `demo`);
+- **Side menu** of forms — Início, Origem, Destino, Schemas, Opções, Revisão (create) or overview, connections, DDL, schedules, infer, servers (manage);
+- **Dynamic content** with the step's form and, below it, the **content footer** with that form's shortcuts (`F5` load lists, `Ctrl+T` test, `F8` create/run...);
+- **Timeline** between the content and the footer: each step as done (✓ green), current (● blue) or pending (○ gray);
+- **Global footer** with the everywhere-shortcuts: `F1` opens the command palette, `F2` goes back to the menu, `Ctrl+Q` quits;
+- **F1 palette**: type to filter, `enter` runs, `esc` closes — jump between screens or run DDL/schedules/infer/driver with on-screen logs (Dagster and Docs close the UI and start in the real terminal);
+- **Colors are status**: green = success, amber = attention, red = error, blue = information, gray = neutral.
 
 Without an interactive terminal (CI, pipe) or with the `CONDUTO_SEM_TUI` variable set, everything falls back to the classic numbered prompts in the terminal — same behaviour, no screen.
 

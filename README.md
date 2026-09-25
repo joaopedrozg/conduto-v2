@@ -27,7 +27,7 @@
 1. [Instalação](#instalação)
 2. [Comece aqui](#comece-aqui)
 3. [Os comandos](#os-comandos)
-4. [O wizard interativo](#o-wizard-interativo)
+4. [A interface](#a-interface)
 5. [O que é gerado](#o-que-é-gerado)
 6. [Como os dados são carregados](#como-os-dados-são-carregados)
 7. [Referência de configuração](#referência-de-configuração)
@@ -83,28 +83,18 @@ A pergunta "Instalar mesmo assim no Python do sistema?" tem padrão **não** —
 ## Comece aqui
 
 ```bash
-# 1. Cria o projeto: conexões no .env, schemas/ e main.yml
+# Cria o projeto: abre a interface (conexões, schemas, revisão)
 conduto init meu_projeto
 
-# 2. Gera o DDL das tabelas e aplica no banco de destino
-conduto ddl --apply
-
-# 3. Gera os schedules e o código Dagster
-conduto schedules
-
-# 4. Sobe o servidor Dagster (http://localhost:3000)
-conduto dagster
-
-# 5. Documentação web do projeto (http://localhost:8000)
-conduto docs
+# Administra o projeto atual: visão geral, DDL, schedules, servidores
+conduto init .
 ```
 
-Confira a versão e a ajuda:
+O resto roda dentro da interface, na paleta **F1** (DDL, schedules, inferir, Dagster, docs...). Confira a versão e a ajuda:
 
 ```bash
 conduto --version
 conduto --help
-conduto [COMANDO] --help
 ```
 
 ### O que o `conduto init` pergunta
@@ -119,6 +109,8 @@ O fluxo é interativo e guiado — você não precisa digitar nomes de banco ou 
 6. **Modo dos schemas** — gerar automaticamente (você flega os schemas de origem e as tabelas) ou configurar manualmente (gera três exemplos para você editar)
 7. **Schedules** — se quer gerar automaticamente o schedule de cada tabela (padrão: hora em hora) e o código Dagster
 8. **Servidor Dagster** — se quer subir agora e gerar os scripts `run_dagster.ps1` / `run_dagster.sh`
+
+**Administrando?** `conduto init .` (ou `conduto init` dentro do projeto) abre o modo administrar: visão geral da saúde, conexões do `.env` para testar/salvar, DDL, schedules, inferir e servidores — tudo com log na tela, e a paleta **F1** lista cada comando.
 
 **Dentro de um projeto uv existente?** Se o diretório atual já tem `pyproject.toml` (por exemplo, depois de `uv add conduto`), o conduto se adapta: gera `.env`, `main.yml` e `schemas/` direto no projeto atual e adiciona só as dependências que faltam — sem subpasta e sem `uv init`. Nesse caso use `uv run conduto init` (o nome do projeto fica opcional).
 
@@ -155,14 +147,10 @@ O comando lê as credenciais de origem do `.env`, consulta o banco e escreve as 
 
 | Comando | O que faz | Opções principais |
 | --- | --- | --- |
-| `conduto init [NOME]` | Cria/atualiza o projeto: `.env`, `schemas/`, `main.yml`, ambiente uv, schedules e código Dagster | — |
-| `conduto ddl` | Converte os schemas YAML em `CREATE TABLE` para o destino | `--apply` / `--no-apply`, `--output arquivo.sql`, `--dir` |
-| `conduto schedules` | (Re)gera os schedules dos schemas e o código Dagster | `--dir` |
-| `conduto dagster` | Sobe o servidor Dagster do projeto (http://localhost:3000) | `--dir` |
-| `conduto docs` | Sobe a documentação web do projeto (http://localhost:8000) | `--port`, `--host`, `--no-open`, `--dir` |
-| `conduto inferir` | Infere as colunas das tabelas no banco de origem | `--tabela`, `--dir` |
-| `conduto install-sqlserver-driver` | Baixa e instala o ODBC Driver for SQL Server (Windows, Linux, macOS) | — |
-| `conduto --help` | Ajuda geral; `conduto [COMANDO] --help` mostra as opções de cada um | — |
+| `conduto init [NOME]` | Abre a interface: cria um projeto novo ou administra o atual (`.env`, `schemas/`, `main.yml`, Dagster...) | `.` = diretório atual |
+| Comandos internos (paleta **F1**) | DDL, schedules, inferir, Dagster, docs e drivers — rodam dentro da interface, com log na tela | — |
+| `conduto ddl`, `schedules`... | Os mesmos comandos, escondidos do help: seguem funcionando direto para scripts e CI | as de sempre |
+| `conduto --help` | Ajuda curta: só mostra como iniciar o projeto | — |
 
 Flags globais: `--lang pt|en` (idioma da execução) e `--version`.
 
@@ -192,17 +180,17 @@ A página mostra a visão geral do projeto, a árvore de arquivos, as conexões 
 
 ---
 
-## O wizard interativo
+## A interface
 
-No terminal, `conduto init` e `conduto ddl` rodam dentro de uma **tela em TUI** (Textual):
+O `conduto init` abre uma **SPA no terminal** (Textual) em dois modos: `init meu_projeto` **cria**, `init .` (ou `init` dentro do projeto) **administra**:
 
-- **Menu lateral de etapas** com o estado de cada uma: atual (● azul), concluída (✓ verde), pulada (— cinza) ou pendente (○);
-- **Revisão**: clicar numa etapa concluída mostra o que foi respondido ali, sem rodar o fluxo de novo;
-- **Painel de log** com o que o comando está fazendo, sem piscar log velho a cada troca de etapa;
-- **Registros no SQLite**: toda a saída fica em `~/.conduto/registros.db` e abre no **`F3`**, com horário, etapa e rolagem — a saída também é reproduzida no terminal quando o shell fecha;
-- **Rodapé com atalhos**: `F2` alterna o menu de etapas, `F3` abre os registros, `esc` volta;
-- **Cores são status**: verde = sucesso, âmbar = atenção, vermelho = erro, azul = informação, cinza = neutro;
-- Widgets de carregamento (spinner e barra de progresso) nas operações demoradas, como o teste de conexão e a aplicação do DDL.
+- **Header** com a marca, a versão e o contexto (criar `demo` / administrar `demo`);
+- **Menu lateral** de formulários — Início, Origem, Destino, Schemas, Opções, Revisão (criar) ou Visão geral, Conexões, DDL, Schedules, Inferir, Servidores (administrar);
+- **Conteúdo dinâmico** com o form da etapa e, embaixo dele, o **footer do conteúdo** com os atalhos daquele form (`F5` carregar listas, `Ctrl+T` testar, `F8` criar/executar...);
+- **Timeline** entre o conteúdo e o rodapé: cada passo como feito (✓ verde), atual (● azul) ou pendente (○ cinza);
+- **Rodapé global** com os atalhos que valem em todo lugar: `F1` abre a paleta de comandos, `F2` volta ao menu, `Ctrl+Q` sai;
+- **Paleta F1**: digita para filtrar, `enter` executa, `esc` fecha — navegar entre telas ou rodar DDL/schedules/inferir/driver com log na tela (Dagster e Docs fecham a interface e sobem no terminal de verdade);
+- **Cores são status**: verde = sucesso, âmbar = atenção, vermelho = erro, azul = informação, cinza = neutro.
 
 Sem terminal interativo (CI, pipe) ou com a variável `CONDUTO_SEM_TUI` definida, tudo cai no fluxo clássico de prompts numerados no terminal — mesmo comportamento, sem a tela.
 

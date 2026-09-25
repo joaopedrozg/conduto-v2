@@ -20,6 +20,29 @@ from conduto.ui import (
 )
 
 
+def _resumir_saida(saida: str, limite: int = 800) -> str:
+    """Últimas linhas da saída para caber na mensagem de erro."""
+    texto = (saida or "").strip()
+    if len(texto) > limite:
+        texto = "..." + texto[-limite:]
+    return texto
+
+
+def _erro_uv(comando: list, codigo: int, stdout: str, stderr: str) -> RuntimeError:
+    """Erro que carrega o porquê (o exit code sozinho não diagnostica).
+
+    Mantido como RuntimeError com tudo dentro da mensagem: no painel a
+    saída do uv vai para o silenciador e só a exceção chega à tela.
+    """
+    detalhe = _resumir_saida(stderr or stdout) or "sem saída"
+    return RuntimeError(
+        t(
+            "Falha ao executar '{cmd}' (código {codigo}): {detalhe}",
+            cmd=" ".join(comando),
+            codigo=codigo,
+            detalhe=detalhe,
+        )
+    )
 def gerar_comando_dagster(project_dir: Path):
     """Gera scripts prontos para subir o servidor Dagster do projeto."""
     project_dir = Path(project_dir)
@@ -69,7 +92,7 @@ def setup_uv_environment(base_path: Path, drivers: list | None = None):
         if init_result.returncode != 0:
             if init_result.stderr:
                 console.print(erro(init_result.stderr))
-            raise subprocess.CalledProcessError(init_result.returncode, init_result.args)
+            raise _erro_uv(init_result.args, init_result.returncode, "", init_result.stderr)
     else:
         console.print(neutro("Projeto uv detectado, pulando 'uv init'."))
 
@@ -106,7 +129,7 @@ def setup_uv_environment(base_path: Path, drivers: list | None = None):
             console.print(result.stdout)
         if result.stderr:
             console.print(erro(result.stderr))
-        raise subprocess.CalledProcessError(result.returncode, ["uv", "add", *pendentes])
+        raise _erro_uv(["uv", "add", *pendentes], result.returncode, result.stdout, result.stderr)
 
     corpo = Text()
     corpo.append(t("Ambiente configurado com sucesso!"), style=CORES["sucesso"])

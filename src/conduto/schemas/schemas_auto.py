@@ -85,13 +85,47 @@ def _escolher_schemas(tabelas: List[Dict[str, str]]) -> List[Dict[str, str]]:
     return filtradas
 
 
+def listar_tabelas_origem(adapter: Adapter, credenciais: dict) -> List[Dict[str, str]]:
+    """Lista ``{schema, table}`` da origem (o painel monta a escolha em cima)."""
+    return listar_tabelas(adapter, credenciais)
+
+
+def escolhas_de_tabelas(tabelas: List[Dict[str, str]], project_dir) -> List[Choice]:
+    """Choices ``schema.tabela`` com aviso "já existe" (reuso da flegagem)."""
+    return [_escolha_de_tabela(tabela, Path(project_dir) / "schemas") for tabela in tabelas]
+
+
+def _selecionadas_de(selecao: Dict[str, Any], tabelas: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    """Filtra as tabelas listadas pelas pedidas em ``selecao`` (sem perguntar).
+
+    ``selecao`` tem ``schemas`` (filtro, opcional) e ``tabelas`` (lista de
+    ``{schema, table}``) — o que o painel do init coleta nos formulários.
+    """
+    pedidos = selecao.get("schemas") or []
+    if pedidos:
+        tabelas = filtrar_tabelas_por_schema(tabelas, pedidos)
+    alvos = {
+        (item.get("schema"), item.get("table")) for item in selecao.get("tabelas") or []
+    }
+    return [
+        {"schema": tabela["schema"], "table": tabela["table"]}
+        for tabela in tabelas
+        if (tabela.get("schema"), tabela.get("table")) in alvos
+    ]
+
+
 def gerar_schemas_automaticos(
-    project_dir, project_name: str, adapter: Adapter, credenciais: dict, schema_destino: str
+    project_dir, project_name: str, adapter: Adapter, credenciais: dict, schema_destino: str,
+    selecao: Dict[str, Any] | None = None,
 ) -> bool:
     """Introspecção do banco de origem + geração dos schemas e do main.yml.
 
     Retorna True se os schemas foram gerados automaticamente, False caso contrário.
     Os YAMLs gerados apontam para o schema de destino já escolhido/criado pelo usuário.
+
+    ``selecao`` (``{"schemas": [...], "tabelas": [{schema, table}]}``) pula os
+    dois prompts e usa a escolha dada — é o caminho do painel do init, que já
+    coletou tudo em formulários. Sem ela, pergunta como sempre (wizard).
     """
     etapa("schemas_origem")  # no shell, alimenta a etapa de flegagem de schemas
     with carregando("Lendo tabelas do banco de origem..."):
@@ -101,30 +135,36 @@ def gerar_schemas_automaticos(
         console.print(aviso("Nenhuma tabela encontrada no banco de origem."))
         return False
 
-    tabelas = _escolher_schemas(tabelas)
-    if not tabelas:
-        return False
+    if selecao is None:
+        tabelas = _escolher_schemas(tabelas)
+        if not tabelas:
+            return False
 
-    console.print(info("{qtd} tabela(s) encontrada(s).", qtd=len(tabelas)))
-    schemas_dir = Path(project_dir) / "schemas"
-    escolhas = [
-        _escolha_de_tabela(tabela, schemas_dir)
-        for tabela in tabelas
-    ]
-    etapa("tabelas")  # no shell, alimenta a etapa de flegagem de tabelas
-    selecionadas = multi_selecionar(
-        "Selecione as tabelas para gerar os schemas:",
-        escolhas,
-        instrucao=INSTRUCAO_BUSCA,
-        use_search_filter=True,
-    )
-    if selecionadas is None:
-        console.print(aviso("Operação cancelada."))
-        raise typer.Exit(code=1)
+        console.print(info("{qtd} tabela(s) encontrada(s).", qtd=len(tabelas)))
+        schemas_dir = Path(project_dir) / "schemas"
+        escolhas = [
+            _escolha_de_tabela(tabela, schemas_dir)
+            for tabela in tabelas
+        ]
+        etapa("tabelas")  # no shell, alimenta a etapa de flegagem de tabelas
+        selecionadas = multi_selecionar(
+            "Selecione as tabelas para gerar os schemas:",
+            escolhas,
+            instrucao=INSTRUCAO_BUSCA,
+            use_search_filter=True,
+        )
+        if selecionadas is None:
+            console.print(aviso("Operação cancelada."))
+            raise typer.Exit(code=1)
 
-    if not selecionadas:
-        console.print(aviso("Nenhuma tabela selecionada."))
-        return False
+        if not selecionadas:
+            console.print(aviso("Nenhuma tabela selecionada."))
+            return False
+    else:
+        selecionadas = _selecionadas_de(selecao, tabelas)
+        if not selecionadas:
+            console.print(aviso("Nenhuma tabela selecionada."))
+            return False
 
     descricoes: List[Dict[str, Any]] = []
     conexao = abrir_conexao(adapter, credenciais)

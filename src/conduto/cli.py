@@ -68,18 +68,16 @@ definir_idioma(detectar_idioma())
 app = typer.Typer(
     help=t(
         "Conduto: o duto que leva seus dados da origem ao destino.\n"
-        "Cria projetos ELT, gera schemas/DDL e automatiza o Dagster."
+        "Comece com: conduto init meu_projeto"
     ),
     epilog=t(
-        "[bold]Como usar (passo a passo)[/bold]\n"
+        "[bold]Como começar[/bold]\n"
         "\n"
-        "  [cyan]1. conduto init meu_projeto[/cyan]   cria o projeto (.env, schemas/ e main.yml)\n"
-        "  [cyan]2. conduto ddl --apply[/cyan]        gera e aplica o DDL no banco de destino\n"
-        "  [cyan]3. conduto schedules[/cyan]          gera os schedules e o código Dagster\n"
-        "  [cyan]4. conduto dagster[/cyan]            sobe o servidor Dagster (http://localhost:3000)\n"
-        "  [cyan]5. conduto docs[/cyan]               abre a documentação web do projeto\n"
+        "  [cyan]conduto init meu_projeto[/cyan]   cria um projeto novo\n"
+        "  [cyan]conduto init .[/cyan]               administra o projeto atual\n"
+        "  [cyan]conduto init[/cyan]                 dentro de um projeto, administra\n"
         "\n"
-        "Dica: use [bold]conduto \\[COMANDO] --help[/bold] para ver as opções de cada comando."
+        "Todo o resto roda dentro da interface, na paleta [bold]F1[/bold]."
     ),
     rich_markup_mode="rich",
     no_args_is_help=True,
@@ -528,17 +526,57 @@ def _schema_origem_manual(adapter, credenciais: dict, conectou: bool) -> str:
 
 
 @app.command(help=t(
-    "Passo 1 - cria/adapta o projeto ELT: .env, main.yml, schemas/ e ambiente uv.\n"
+    "Abre a interface: cria um projeto novo ou administra o atual.\n"
     "\n"
     "Exemplos:\n"
     "  conduto init meu_projeto       cria um projeto novo\n"
-    "  conduto init                   adapta o projeto uv atual"
+    "  conduto init .                 administra o projeto atual\n"
+    "  conduto init                   dentro de um projeto, administra"
 ))
 def init(
-    project_name: str = typer.Argument(None, help=t("Nome do projeto (opcional se já estiver em um projeto uv)")),
+    project_name: str = typer.Argument(None, help=t("Nome do projeto ('.' = o diretório atual)")),
 ):
-    """Abre o shell do wizard com o passo a passo do ``init`` no menu lateral."""
-    return rodar_no_shell(ETAPAS_INIT, "init", _init_corpo, project_name)
+    """Abre a interface do ``init`` (ou o passo a passo legado, sem terminal)."""
+    from conduto.tui.prompts import _tem_terminal
+
+    if not _tem_terminal():
+        return rodar_no_shell(ETAPAS_INIT, "init", _init_corpo, project_name)
+
+    from conduto.tui.spa_modelo import MODO_ADMINISTRAR, MODO_CRIAR, decidir_init
+    from conduto.tui.spa_shell import SpaApp
+
+    cwd = Path.cwd()
+    nome_arg = (project_name or "").strip() or None
+    alvo = cwd if nome_arg in (None, ".") else cwd / nome_arg
+    decisao = decidir_init(
+        nome_arg,
+        (cwd / "pyproject.toml").exists(),
+        (cwd / "main.yml").exists(),
+        (alvo / "main.yml").exists(),
+    )
+    if decisao.modo == "erro":
+        console.print(erro(decisao.erro))
+        raise typer.Exit(code=1)
+
+    if decisao.modo == MODO_CRIAR:
+        resultado = SpaApp(
+            MODO_CRIAR,
+            project_name=decisao.nome or cwd.name,
+            em_projeto_uv=(cwd / "pyproject.toml").exists(),
+        ).run()
+        if resultado and resultado.get("acao") == "administrar":
+            # Fluxo contínuo da SPA: criou, agora administra sem sair do terminal.
+            resultado = SpaApp(
+                MODO_ADMINISTRAR, project_dir=Path(resultado["project_dir"])
+            ).run()
+    else:
+        alvo_dir = cwd if decisao.usar_cwd else cwd / (decisao.nome or "")
+        resultado = SpaApp(MODO_ADMINISTRAR, project_dir=alvo_dir).run()
+
+    if resultado and resultado.get("acao") == "dagster":
+        _subir_servidor_dagster(Path(resultado["project_dir"]))
+    elif resultado and resultado.get("acao") == "docs":
+        docs(str(Path(resultado["project_dir"])))
 
 
 def _init_corpo(project_name: Optional[str]) -> None:
@@ -676,7 +714,7 @@ def _init_corpo(project_name: Optional[str]) -> None:
             _subir_servidor_dagster(project_dir)
 
 
-@app.command(help=t(
+@app.command(hidden=True, help=t(
     "Passo 2 - gera o DDL das tabelas e (opcionalmente) aplica no banco de destino.\n"
     "\n"
     "Exemplos:\n"
@@ -751,7 +789,7 @@ def _ddl_corpo(directory: str, output: Optional[str], apply: Optional[bool]) -> 
         ))
 
 
-@app.command(help=t(
+@app.command(hidden=True, help=t(
     "Passo 3 - gera/atualiza os schedules e o código Dagster dos schemas.\n"
     "\n"
     "Exemplo:\n"
@@ -773,7 +811,7 @@ def schedules(
         raise typer.Exit(code=1)
 
 
-@app.command(help=t(
+@app.command(hidden=True, help=t(
     "Passo 4 - sobe o servidor Dagster do projeto.\n"
     "\n"
     "Exemplo:\n"
@@ -790,7 +828,27 @@ def dagster(
     _subir_servidor_dagster(project_dir)
 
 
-@app.command(help=t(
+@app.command(hidden=True, help=t(
+    "Abre o painel interativo: menu lateral com formulários de origem/destino.\n"
+    "\n"
+    "Exemplo:\n"
+    "  conduto dashboard"
+))
+def dashboard():
+    """Abre o painel interativo com as conexões de origem e destino lado a lado."""
+    from conduto.tui.dashboard import CondutoApp
+    from conduto.tui.prompts import _tem_terminal
+
+    if not _tem_terminal():
+        console.print(erro(
+            "O painel precisa de um terminal interativo. "
+            "Rode em um terminal de verdade (sem pipe nem CI)."
+        ))
+        raise typer.Exit(code=1)
+    CondutoApp().run()
+
+
+@app.command(hidden=True, help=t(
     "Baixa e instala o ODBC Driver for SQL Server automaticamente (Windows, Linux e macOS).\n"
     "\n"
     "Exemplo:\n"
@@ -807,7 +865,7 @@ def install_sqlserver_driver():
         raise typer.Exit(code=1)
 
 
-@app.command(help=t(
+@app.command(hidden=True, help=t(
     "Infere as colunas das tabelas do banco de origem nos schemas do projeto.\n"
     "\n"
     "Exemplos:\n"
@@ -833,7 +891,7 @@ def inferir(
     ))
 
 
-@app.command(help=t(
+@app.command(hidden=True, help=t(
     "Passo 5 - sobe um servidor web com a documentação da estrutura do projeto.\n"
     "\n"
     "Exemplo:\n"
