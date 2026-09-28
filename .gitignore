@@ -23,8 +23,14 @@ wheels/
 .coverage
 htmlcov/
 
+# Frontend Angular
+node_modules/
+web/dist/
+web/.angular/
+
 # Projetos de teste locais (scratch)
 teste/
+meu_projeto/
 
 # Banco DuckDB local e dados do docker-compose
 data/

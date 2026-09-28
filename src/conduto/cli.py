@@ -915,5 +915,41 @@ def docs(
         raise typer.Exit(code=1)
 
 
+@app.command(help=t(
+    "Abre a Web UI (Angular + API): cria/administra o projeto no navegador.\n"
+    "\n"
+    "A TUI Textual continua disponível via `conduto init` — a Web UI é alternativa.\n"
+    "\n"
+    "Exemplo:\n"
+    "  conduto web                     acesse http://localhost:8080"
+))
+def web(
+    host: str = typer.Option("127.0.0.1", "--host", help=t("Endereço IP em que o servidor escuta")),
+    port: int = typer.Option(8080, "--port", "-p", help=t("Porta do servidor da Web UI")),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help=t("Abre o navegador automaticamente")),
+):
+    """Sobe o backend FastAPI que serve a Web UI Angular (a TUI segue intacta)."""
+    import webbrowser
+
+    try:
+        import uvicorn
+
+        from conduto.web.app import criar_app
+    except ImportError:
+        console.print(erro(
+            "Dependências da Web UI ausentes. Instale com: pip install \"conduto[web]\" ou uv sync"
+        ))
+        raise typer.Exit(code=1)
+    url = f"http://{host}:{port}/"
+    # print() simples de propósito: o banner rich (separador ─) quebra em
+    # console sem terminal (cp1252 em background/pipe) — e este log vai
+    # para arquivos de log quando o servidor roda em segundo plano.
+    print(f"Web UI do conduto (Angular + API) em: {url}  (API em {url}docs)")
+    print("A TUI continua em: conduto init  |  Pressione Ctrl+C para encerrar.")
+    if open_browser:
+        webbrowser.open(url)
+    uvicorn.run(criar_app(), host=host, port=port)
+
+
 if __name__ == "__main__":
     app()
