@@ -1,6 +1,4 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { AdminContext } from '../../services/admin-context.service';
 import { CriarComponent } from '../criar.component';
@@ -12,15 +10,8 @@ import { CriarComponent } from '../criar.component';
 @Component({
   selector: 'conduto-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterOutlet],
+  imports: [RouterOutlet],
   template: `
-    <div class="timeline">
-      <span class="atual">● Administrar {{ ctx.projectDir() }}</span>
-    </div>
-    <div class="card">
-      <label>Diretório do projeto</label>
-      <input [ngModel]="ctx.projectDir()" (ngModelChange)="ctx.projectDir.set($event)" />
-    </div>
     <router-outlet />
   `,
 })
