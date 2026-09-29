@@ -89,7 +89,7 @@ import { ConexaoComponent } from '../components/conexao.component';
         <input *ngIf="freqId === 'custom'" [(ngModel)]="cronCustom" placeholder="Ex.: 30 8 * * 1-5" />
         <p class="contagem">Cron aplicado: <code>{{ cronFinal() || '(padrão hora em hora)' }}</code></p>
       </div>
-      <label><input type="checkbox" [(ngModel)]="aplicarDdl" /> Aplicar DDL no destino ao criar</label>
+      <label class="aviso-ddl"><input type="checkbox" [(ngModel)]="aplicarDdl" /> Aplicar DDL no destino ao criar</label>
     </div>
 
     <div class="card" *ngIf="etapa() === 3">
@@ -136,6 +136,7 @@ import { ConexaoComponent } from '../components/conexao.component';
     '.schemas { display: flex; gap: 8px 16px; flex-wrap: wrap; margin: 4px 0 8px; }',
     '.schemas label { display: inline-flex; gap: 4px; align-items: center; margin: 0; font-weight: 400; }',
     '.freq label { display: block; margin: 4px 0; }',
+    '.aviso-ddl { display: flex; gap: 8px; align-items: flex-start; background: #fff8e1; border: 1px solid #d4a017; border-left: 4px solid var(--atencao); border-radius: 6px; padding: 10px 12px; margin-top: 12px; font-weight: 700; cursor: pointer; }',
   ],
 })
 export class CriarComponent {
