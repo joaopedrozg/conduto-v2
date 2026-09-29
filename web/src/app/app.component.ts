@@ -1,11 +1,13 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
+import { ToastsComponent } from './components/toasts.component';
 
 @Component({
   selector: 'conduto-root',
   standalone: true,
-  imports: [RouterLink, RouterOutlet],
+  imports: [RouterLink, RouterOutlet, ToastsComponent],
   template: `
+    <conduto-toasts />
     <header class="marca">
       <strong>conduto web</strong> — o duto que leva seus dados da origem ao destino
       <span style="opacity:.7"> · TUI mantida em <code>conduto init</code></span>

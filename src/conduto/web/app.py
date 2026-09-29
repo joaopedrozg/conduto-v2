@@ -13,7 +13,6 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 from conduto import __version__
 from conduto.web import esquemas as E
@@ -26,6 +25,17 @@ def _adapter(tipo: str):
     if adapter is None:
         raise HTTPException(status_code=400, detail=f"Tipo de SGBD desconhecido: {tipo!r}")
     return adapter
+
+
+def diretorio_frontend() -> Path | None:
+    """Pasta com o build Angular (`web/dist[/browser]`) ou None se não compilado.
+
+    O CLI (`conduto init --web`) usa para exigir o build antes de subir a API.
+    """
+    dist = Path(__file__).resolve().parent.parent.parent.parent / "web" / "dist"
+    browser = dist / "browser"
+    estatico = browser if (browser / "index.html").exists() else dist
+    return estatico if (estatico / "index.html").exists() else None
 
 
 _CRON_PRESETS = {
@@ -336,7 +346,13 @@ def criar_app() -> FastAPI:
         except PermissionError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
         pai = str(atual.parent) if atual.parent != atual else None
-        return {"atual": str(atual), "pai": pai, "pastas": pastas}
+        return {
+            "atual": str(atual),
+            "pai": pai,
+            "pastas": pastas,
+            "casa": str(Path.home()),
+            "servidor_cwd": str(Path.cwd()),
+        }
 
     def _dagster_vivo(project_dir: str) -> bool:
         proc = _DAGSTER_PROC.get(project_dir)
@@ -355,9 +371,12 @@ def criar_app() -> FastAPI:
     def dagster_status(project_dir: str = "."):
         chave = str(Path(project_dir or ".").resolve())
         vivo = _dagster_vivo(chave)
+        responde = _dagster_responde()
         return {
             "rodando": vivo,
-            "responde": _dagster_responde() if vivo else False,
+            "responde": responde,
+            # responde sem processo gerenciado = subido por fora (terminal/TUI).
+            "externo": responde and not vivo,
             "pid": _DAGSTER_PROC[chave].pid if vivo else None,
             "url": "http://localhost:3000",
         }
@@ -378,6 +397,14 @@ def criar_app() -> FastAPI:
         chave = str(project_dir.resolve())
         if _dagster_vivo(chave):
             return {"rodando": True, "pid": _DAGSTER_PROC[chave].pid, "url": "http://localhost:3000"}
+        if _dagster_responde():
+            # Porta ocupada por um servidor que a Web UI não gerencia:
+            # subir outro daria conflito — o status passa a mostrá-lo.
+            raise HTTPException(
+                status_code=409,
+                detail="Já há um servidor respondendo em http://localhost:3000 "
+                "(iniciado fora da Web UI). Use Atualizar status para vê-lo.",
+            )
         if not garantir_codigo_dagster(project_dir):
             raise HTTPException(status_code=400, detail="Código Dagster ausente (main.yml?).")
         if not garantir_config_dagster(project_dir):
@@ -413,12 +440,23 @@ def criar_app() -> FastAPI:
     # Em dev o Angular roda com `ng serve` e proxy para este backend; em prod
     # o `ng build` (application builder) cai em web/dist/browser e é servido
     # aqui na raiz. Suporta os dois layouts (dist/ e dist/browser/).
-    dist = Path(__file__).resolve().parent.parent.parent.parent / "web" / "dist"
-    browser = dist / "browser"
-    estatico = browser if (browser / "index.html").exists() else dist
-    index = estatico / "index.html"
-    if index.exists():
-        app.mount("/", StaticFiles(directory=str(estatico), html=True), name="web")
+    estatico = diretorio_frontend()
+    index = (estatico / "index.html") if estatico is not None else None
+    if estatico is not None and index is not None and index.exists():
+        # Servidor leve do build Angular, com fallback SPA: rota que não é
+        # arquivo nem API devolve o index.html (links diretos /criar, /admin).
+        raiz = estatico.resolve()
+
+        @app.get("/{caminho:path}", include_in_schema=False)
+        def spa(caminho: str):
+            if caminho.startswith(("api/", "docs", "openapi.json", "redoc")):
+                raise HTTPException(status_code=404, detail="Rota não encontrada")
+            alvo = (estatico / caminho).resolve()
+            if not str(alvo).startswith(str(raiz)):
+                raise HTTPException(status_code=404, detail="Rota não encontrada")
+            if alvo.is_file():
+                return FileResponse(path=str(alvo))
+            return FileResponse(path=str(index))
     else:
 
         @app.get("/", include_in_schema=False)
@@ -436,9 +474,9 @@ def criar_app() -> FastAPI:
         def fallback_spa(caminho: str):
             if caminho.startswith("api/") or caminho.startswith("docs"):
                 raise HTTPException(status_code=404, detail="Rota não encontrada")
-            return FileResponse(path=str(index)) if index.exists() else JSONResponse(
-                {"detail": "Frontend não compilado. Veja GET /"}, status_code=404
-            )
+            if index is not None and index.exists():
+                return FileResponse(path=str(index))
+            return JSONResponse({"detail": "Frontend não compilado. Veja GET /"}, status_code=404)
 
     return app
 

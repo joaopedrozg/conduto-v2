@@ -2,6 +2,8 @@ import { Component, Input, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, Credenciais, Sgbd } from '../services/api.service';
+import { ToastService } from '../services/toast.service';
+import { DICA_BACKEND_OFF, backendIndisponivel, mensagemErroApi } from '../services/erro-api';
 
 /**
  * Card de conexão (origem ou destino): SGBD atualiza os defaults,
@@ -58,10 +60,10 @@ import { ApiService, Credenciais, Sgbd } from '../services/api.service';
 })
 export class ConexaoComponent {
   private api = inject(ApiService);
+  private toast = inject(ToastService);
   @Input() titulo = '';
   @Input() valor!: Credenciais;
   @Input() sgbds: Sgbd[] = [];
-  @Input() log!: { set(m: string): void };
   estado = signal('');
   bancos = signal<string[]>([]);
   schemasList = signal<string[]>([]);
@@ -74,9 +76,14 @@ export class ConexaoComponent {
     return this.ehArquivo() ? 'Caminho ou URI (ex: s3://bucket/dados)' : 'Host (ex: localhost)';
   }
 
-  private dizer(msg: string): void {
+  private dizer(msg: string, tipo: 'ok' | 'erro' | 'info' = 'info'): void {
     this.estado.set(msg);
-    this.log?.set(`${this.titulo}: ${msg}`);
+    if (tipo === 'erro') this.toast.erro(`${this.titulo}: ${msg}`);
+    else if (tipo === 'ok') this.toast.ok(`${this.titulo}: ${msg}`);
+  }
+
+  private falhou(e: unknown, prefixo: string): void {
+    this.dizer(backendIndisponivel(e) ? DICA_BACKEND_OFF : `${prefixo}: ${mensagemErroApi(e)}`, 'erro');
   }
 
   /** Ao trocar o SGBD, preenche os defaults do adapter. */
@@ -96,10 +103,10 @@ export class ConexaoComponent {
   testar(): void {
     this.api.testar(this.valor).subscribe({
       next: (r) => {
-        this.dizer(r.ok ? 'Conexão OK.' : `Falha: ${r.mensagem}`);
+        this.dizer(r.ok ? 'Conexão OK.' : `Falha: ${r.mensagem}`, r.ok ? 'ok' : 'erro');
         if (r.ok) this.carregarBancos(true);
       },
-      error: (e) => this.dizer(`Erro: ${e.error?.detail ?? e.message}`),
+      error: (e) => this.falhou(e, 'Teste'),
     });
   }
 
@@ -110,10 +117,10 @@ export class ConexaoComponent {
         if (r.bancos.length && !r.bancos.includes(this.valor.database)) {
           this.valor.database = r.bancos[0];
         }
-        if (!silencioso) this.dizer(`${r.bancos.length} banco(s) carregado(s).`);
+        if (!silencioso) this.dizer(`${r.bancos.length} banco(s) carregado(s).`, 'ok');
         if (r.bancos.length) this.carregarSchemas(true);
       },
-      error: (e) => this.dizer(`Bancos: ${e.error?.detail ?? e.message}`),
+      error: (e) => this.falhou(e, 'Bancos'),
     });
   }
 
@@ -129,9 +136,9 @@ export class ConexaoComponent {
         if (r.schemas.length && !r.schemas.includes(this.valor.schema)) {
           this.valor.schema = r.schemas[0];
         }
-        if (!silencioso) this.dizer(`${r.schemas.length} schema(s) carregado(s).`);
+        if (!silencioso) this.dizer(`${r.schemas.length} schema(s) carregado(s).`, 'ok');
       },
-      error: (e) => this.dizer(`Schemas: ${e.error?.detail ?? e.message}`),
+      error: (e) => this.falhou(e, 'Schemas'),
     });
   }
 
@@ -139,27 +146,26 @@ export class ConexaoComponent {
     this.api.driversFaltantes(this.valor.tipo).subscribe({
       next: (r) =>
         this.dizer(
-          r.faltantes.length
-            ? `Drivers ausentes: ${r.faltantes.join(', ')}.`
-            : `Drivers de ${r.tipo} OK.`,
+          r.faltantes.length ? `Drivers ausentes: ${r.faltantes.join(', ')}.` : `Drivers de ${r.tipo} OK.`,
+          r.faltantes.length ? 'erro' : 'ok',
         ),
-      error: (e) => this.dizer(`Erro: ${e.error?.detail ?? e.message}`),
+      error: (e) => this.falhou(e, 'Drivers'),
     });
   }
 
   instalarDrivers(): void {
     this.dizer(`Instalando drivers de ${this.valor.tipo} no servidor...`);
     this.api.instalarDrivers(this.valor.tipo).subscribe({
-      next: (r) => this.dizer(r.mensagem),
-      error: (e) => this.dizer(`Falha ao instalar: ${e.error?.detail ?? e.message}`),
+      next: (r) => this.dizer(r.mensagem, 'ok'),
+      error: (e) => this.falhou(e, 'Instalação'),
     });
   }
 
   instalarOdbc(): void {
     this.dizer('Instalando ODBC Driver do SQL Server no servidor...');
     this.api.instalarOdbc().subscribe({
-      next: (r) => this.dizer(r.mensagem),
-      error: (e) => this.dizer(`Falha no ODBC: ${e.error?.detail ?? e.message}`),
+      next: (r) => this.dizer(r.mensagem, 'ok'),
+      error: (e) => this.falhou(e, 'ODBC'),
     });
   }
 }

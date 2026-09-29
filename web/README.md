@@ -33,6 +33,10 @@ cd web
 npm install
 npm start                           # http://localhost:4200
 
+> `conduto init nome --web` abre `/criar?nome=<nome>&dir=<pasta>` (pula a
+> escolha de pasta) e o Administrar lê `?projeto=` ou o último contexto
+> (`localStorage conduto.projeto`).
+
 # 3. build de produção (o backend passa a servir na raiz)
 npm run build
 ```

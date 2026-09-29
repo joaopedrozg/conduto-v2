@@ -92,6 +92,8 @@ conduto init .
 
 O resto roda dentro da interface, na paleta **F1** (DDL, schedules, inferir, Dagster, docs...). Confira a versão e a ajuda:
 
+Preferiu navegador? `conduto init meu_projeto --web` sobe a API em background e abre a Web UI já no projeto (pula a escolha de pasta; Ctrl+C derruba API e servidor juntos).
+
 ```bash
 conduto --version
 conduto --help

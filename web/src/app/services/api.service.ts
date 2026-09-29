@@ -40,8 +40,8 @@ export class ApiService {
     return this.http.get<Sgbd[]>('/api/sgbds');
   }
 
-  pastas(caminho: string): Observable<{ atual: string; pai: string | null; pastas: string[] }> {
-    return this.http.get<{ atual: string; pai: string | null; pastas: string[] }>(
+  pastas(caminho: string): Observable<{ atual: string; pai: string | null; pastas: string[]; casa: string; servidor_cwd: string }> {
+    return this.http.get<{ atual: string; pai: string | null; pastas: string[]; casa: string; servidor_cwd: string }>(
       '/api/sistema/pastas',
       { params: { caminho } },
     );
@@ -117,8 +117,8 @@ export class ApiService {
     );
   }
 
-  dagsterStatus(project_dir: string): Observable<{ rodando: boolean; responde: boolean; pid: number | null; url: string }> {
-    return this.http.get<{ rodando: boolean; responde: boolean; pid: number | null; url: string }>(
+  dagsterStatus(project_dir: string): Observable<{ rodando: boolean; responde: boolean; externo: boolean; pid: number | null; url: string }> {
+    return this.http.get<{ rodando: boolean; responde: boolean; externo: boolean; pid: number | null; url: string }>(
       '/api/servidores/dagster',
       { params: { project_dir } },
     );

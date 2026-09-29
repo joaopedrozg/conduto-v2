@@ -92,6 +92,8 @@ conduto init .
 
 Everything else runs inside the UI, in the **F1** palette (DDL, schedules, infer, Dagster, docs...). Check the version and the help:
 
+Prefer the browser? `conduto init my_project --web` starts the API in the background and opens the Web UI already scoped to the project (skips the folder picker; Ctrl+C stops API and server together).
+
 ```bash
 conduto --version
 conduto --help

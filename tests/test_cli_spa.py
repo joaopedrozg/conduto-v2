@@ -36,6 +36,17 @@ def _spa_fake(monkeypatch, resultados):
     return chamadas
 
 
+def test_montar_url_web_codifica_parametros():
+    url = cli._montar_url_web("127.0.0.1", 8080, "criar", {"nome": "meu projeto", "dir": "C:/x/y"})
+    assert url.startswith("http://127.0.0.1:8080/criar?")
+    assert "nome=meu+projeto" in url
+    assert "dir=C%3A%2Fx%2Fy" in url
+
+
+def test_montar_url_web_sem_params():
+    assert cli._montar_url_web("127.0.0.1", 8080, "/admin", {}) == "http://127.0.0.1:8080/admin"
+
+
 def test_help_mostra_como_iniciar_e_esconde_o_resto():
     resultado = CliRunner().invoke(cli.app, ["--help"])
     assert resultado.exit_code == 0

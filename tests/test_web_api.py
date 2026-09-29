@@ -1,5 +1,6 @@
 """Web UI: a TUI segue intacta; aqui cobrimos só o backend FastAPI."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from conduto.web.app import criar_app
@@ -54,7 +55,9 @@ def test_pastas_lista_tmp(tmp_path):
     client = TestClient(criar_app())
     resposta = client.get("/api/sistema/pastas", params={"caminho": str(tmp_path)})
     assert resposta.status_code == 200
-    assert resposta.json()["pastas"] == ["sub"]
+    corpo = resposta.json()
+    assert corpo["pastas"] == ["sub"]
+    assert corpo["casa"] and corpo["servidor_cwd"]
 
     inexistente = client.get("/api/sistema/pastas", params={"caminho": str(tmp_path / "nada")})
     assert inexistente.status_code == 400
@@ -87,4 +90,34 @@ def test_dagster_status_parado(tmp_path):
     assert resposta.status_code == 200
     status = client.get("/api/servidores/dagster", params={"project_dir": str(tmp_path)})
     assert status.status_code == 200
-    assert status.json()["rodando"] is False
+    corpo = status.json()
+    # Sem processo gerenciado: externo reflete se há algo na porta 3000
+    # (o ambiente pode ter um Dagster de verdade rodando).
+    assert corpo["rodando"] is False
+    assert corpo["externo"] == corpo["responde"]
+    assert corpo["url"] == "http://localhost:3000"
+
+
+def test_diretorio_frontend_compilado_ou_ausente():
+    from conduto.web.app import diretorio_frontend
+
+    onde = diretorio_frontend()
+    # Com build: pasta com index.html; sem build (CI limpo): None.
+    assert onde is None or (onde / "index.html").exists()
+
+
+def test_spa_fallback_e_api_convivem():
+    from conduto.web.app import diretorio_frontend
+
+    if diretorio_frontend() is None:
+        pytest.skip("sem build Angular")
+    from fastapi.testclient import TestClient
+
+    from conduto.web.app import criar_app
+
+    client = TestClient(criar_app())
+    criar = client.get("/criar", params={"nome": "x"})
+    assert criar.status_code == 200
+    assert "conduto-root" in criar.text
+    assert client.get("/api/saude").status_code == 200
+    assert client.get("/api/rota_inexistente").status_code == 404
