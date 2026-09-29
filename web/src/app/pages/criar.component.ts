@@ -6,7 +6,6 @@ import { ApiService, CRON_PRESETS, Credenciais, Sgbd } from '../services/api.ser
 import { ToastService } from '../services/toast.service';
 import { DICA_BACKEND_OFF, backendIndisponivel, mensagemErroApi } from '../services/erro-api';
 import { ConexaoComponent } from '../components/conexao.component';
-import { PastaComponent } from '../components/pasta.component';
 
 /**
  * Wizard de criação — experiência enterprise:
@@ -15,7 +14,7 @@ import { PastaComponent } from '../components/pasta.component';
 @Component({
   selector: 'conduto-criar',
   standalone: true,
-  imports: [CommonModule, FormsModule, ConexaoComponent, PastaComponent],
+  imports: [CommonModule, FormsModule, ConexaoComponent],
   template: `
     <div class="timeline">
       <span *ngFor="let p of passos; let i = index" [class]="classePasso(i)">
@@ -25,16 +24,6 @@ import { PastaComponent } from '../components/pasta.component';
 
     <div class="card" *ngIf="etapa() === 0">
       <h2>Conexões</h2>
-      <div class="projeto">
-        <div>
-          <label>Projeto</label>
-          <input [(ngModel)]="nomeProjeto" placeholder="meu_projeto" />
-        </div>
-        <div style="flex:1">
-          <label>Pasta de destino (no servidor)</label>
-          <conduto-pasta [(valor)]="projectDir" />
-        </div>
-      </div>
       <div class="cards">
         <section class="conexao"><conduto-conexao [titulo]="'Origem'" [valor]="origem" [sgbds]="sgbds()" [escolherSchema]="false" /></section>
         <section class="conexao"><conduto-conexao [titulo]="'Destino'" [valor]="destino" [sgbds]="sgbds()" /></section>
@@ -141,8 +130,6 @@ import { PastaComponent } from '../components/pasta.component';
   `,
   styles: [
     '.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }',
-    '.projeto { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }',
-    '.projeto > div:first-child { min-width: 200px; }',
     '.conexao { border: 1px solid var(--borda); border-radius: 8px; padding: 12px; }',
     '.linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }',
     '.linha button { margin: 0; }',
