@@ -55,6 +55,11 @@ import { ConexaoComponent } from '../components/conexao.component';
         </label>
       </div>
       <div class="linha">
+        <span class="contagem">Tabelas:</span>
+        <button type="button" class="secundario" (click)="selecionarVisiveis()">Selecionar visíveis</button>
+        <button type="button" class="secundario" (click)="tabelasEscolhidas = []">Limpar seleção</button>
+      </div>
+      <div class="linha">
         <input [ngModel]="filtro()" (ngModelChange)="atualizarFiltro($event)" placeholder="Buscar nas tabelas dos schemas selecionados..." style="flex:1" />
         <button type="button" class="secundario" (click)="carregarTabelas()">Recarregar</button>
         <button type="button" class="secundario" (click)="carregarTabelas(true)">Trazer tudo</button>
@@ -70,14 +75,10 @@ import { ConexaoComponent } from '../components/conexao.component';
           </tr>
         </tbody>
       </table>
-      <div class="linha" *ngIf="totalPaginas() > 1">
-        <button class="secundario" [disabled]="pagina() === 0" (click)="pagina.set(pagina() - 1)">← Anterior</button>
+      <div class="paginacao" *ngIf="totalPaginas() > 1">
+        <button type="button" class="secundario" [disabled]="pagina() === 0" (click)="pagina.set(pagina() - 1)">← Anterior</button>
         <span class="contagem">Página {{ pagina() + 1 }} de {{ totalPaginas() }}</span>
-        <button class="secundario" [disabled]="pagina() === totalPaginas() - 1" (click)="pagina.set(pagina() + 1)">Próxima →</button>
-      </div>
-      <div class="linha">
-        <button class="secundario" (click)="selecionarVisiveis()">Selecionar visíveis</button>
-        <button class="secundario" (click)="tabelasEscolhidas = []">Limpar seleção</button>
+        <button type="button" class="secundario" [disabled]="pagina() === totalPaginas() - 1" (click)="pagina.set(pagina() + 1)">Próxima →</button>
       </div>
       </div>
     </div>
@@ -141,6 +142,8 @@ import { ConexaoComponent } from '../components/conexao.component';
     '.conexao { border: 1px solid var(--borda); border-radius: 8px; padding: 16px; background: #fff; }',
     '.linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }',
     '.linha button { margin: 0; }',
+    '.paginacao { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 8px 0; }',
+    '.paginacao button { margin: 0; }',
     '.contagem { color: var(--neutro); font-size: .9em; }',
     '.schemas { display: flex; gap: 8px 16px; flex-wrap: wrap; margin: 4px 0 8px; }',
     '.schemas label { display: inline-flex; gap: 4px; align-items: center; margin: 0; font-weight: 400; }',
