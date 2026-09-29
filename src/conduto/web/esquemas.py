@@ -62,6 +62,11 @@ class PedidoCatalogo(BaseModel):
     )
 
 
+class PedidoConexaoSalva(BaseModel):
+    apelido: str = ""
+    credenciais: Credenciais
+
+
 class PedidoDdl(BaseModel):
     project_dir: str = "."
     aplicar: bool = False

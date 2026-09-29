@@ -1,7 +1,7 @@
-import { Component, Input, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, Credenciais, Sgbd } from '../services/api.service';
+import { ApiService, ConexaoSalva, Credenciais, Sgbd } from '../services/api.service';
 import { ToastService } from '../services/toast.service';
 import { DICA_BACKEND_OFF, backendIndisponivel, mensagemErroApi } from '../services/erro-api';
 
@@ -45,20 +45,42 @@ import { DICA_BACKEND_OFF, backendIndisponivel, mensagemErroApi } from '../servi
       <option *ngFor="let s of schemasList()" [value]="s">{{ s }}</option>
     </select>
     <div class="linha">
-      <button class="secundario" (click)="verificarDrivers()">Verificar drivers</button>
-      <button class="secundario" (click)="instalarDrivers()">Instalar drivers</button>
-      <button class="secundario" *ngIf="valor.tipo === 'sqlserver'" (click)="instalarOdbc()">
+      <button type="button" class="secundario" (click)="verificarDrivers()">Verificar drivers</button>
+      <button type="button" class="secundario" (click)="instalarDrivers()">Instalar drivers</button>
+      <button type="button" class="secundario" *ngIf="valor.tipo === 'sqlserver'" (click)="instalarOdbc()">
         Instalar ODBC
       </button>
+    </div>
+    <div *ngIf="salvas">
+      <h4>Conexões salvas</h4>
+      <div class="linha">
+        <input [(ngModel)]="apelido" placeholder="Nome (ex.: produção)" style="flex:1" />
+        <button type="button" class="secundario" (click)="salvarAtual()">Salvar atual</button>
+      </div>
+      <table class="dados" *ngIf="salvasLista().length">
+        <thead><tr><th>Nome</th><th>SGBD</th><th>Host</th><th>Banco</th><th>Usuário</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let s of salvasLista()" class="clicavel" (click)="usarSalva(s)" title="Clique para usar">
+            <td>{{ s.apelido }}</td>
+            <td>{{ s.credenciais.tipo }}</td>
+            <td>{{ s.credenciais.host }}</td>
+            <td>{{ s.credenciais.database }}</td>
+            <td>{{ s.credenciais.user }}</td>
+            <td class="acoes"><button type="button" class="perigo" (click)="excluirSalva(s, $event)">Excluir</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="contagem" *ngIf="!salvasLista().length">Nenhuma salva — preencha e clique em Salvar atual.</p>
     </div>
   `,
   styles: [
     '.linha { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }',
     '.linha button { margin: 4px 0 0; }',
     '.estado { font-size: 0.9em; color: var(--neutro); }',
+    'h4 { margin: 14px 0 6px; }',
   ],
 })
-export class ConexaoComponent {
+export class ConexaoComponent implements OnInit {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   @Input() titulo = '';
@@ -66,9 +88,17 @@ export class ConexaoComponent {
   @Input() sgbds: Sgbd[] = [];
   /** false na origem: o schema é escolhido no passo Tabelas, não aqui. */
   @Input() escolherSchema = true;
+  /** Tabela de conexões salvas (só na origem, por enquanto). */
+  @Input() salvas = true;
   estado = signal('');
   bancos = signal<string[]>([]);
   schemasList = signal<string[]>([]);
+  salvasLista = signal<ConexaoSalva[]>([]);
+  apelido = '';
+
+  ngOnInit(): void {
+    if (this.salvas) this.carregarSalvas();
+  }
 
   ehArquivo(): boolean {
     return this.valor?.tipo === 'duckdb' || this.valor?.tipo === 'deltalake';
@@ -169,6 +199,42 @@ export class ConexaoComponent {
     this.api.instalarOdbc().subscribe({
       next: (r) => this.dizer(r.mensagem, 'ok'),
       error: (e) => this.falhou(e, 'ODBC'),
+    });
+  }
+
+  carregarSalvas(): void {
+    this.api.conexoesSalvas().subscribe({
+      next: (r) => this.salvasLista.set(r.conexoes),
+      error: (e) => this.falhou(e, 'Salvas'),
+    });
+  }
+
+  salvarAtual(): void {
+    this.api.salvarConexao(this.apelido.trim(), this.valor).subscribe({
+      next: (s) => {
+        this.apelido = '';
+        this.carregarSalvas();
+        this.toast.ok(`Conexão '${s.apelido}' salva.`);
+      },
+      error: (e) => this.falhou(e, 'Salvar'),
+    });
+  }
+
+  usarSalva(s: ConexaoSalva): void {
+    Object.assign(this.valor, { ...s.credenciais });
+    this.bancos.set([]);
+    this.schemasList.set([]);
+    this.dizer(`Usando '${s.apelido}' — confira e teste.`, 'info');
+  }
+
+  excluirSalva(s: ConexaoSalva, evento: Event): void {
+    evento.stopPropagation();
+    this.api.excluirConexao(s.id).subscribe({
+      next: () => {
+        this.carregarSalvas();
+        this.toast.ok(`Conexão '${s.apelido}' excluída.`);
+      },
+      error: (e) => this.falhou(e, 'Excluir'),
     });
   }
 }

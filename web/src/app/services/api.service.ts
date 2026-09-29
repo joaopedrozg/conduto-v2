@@ -22,6 +22,12 @@ export interface Sgbd {
   usuario_padrao: string;
 }
 
+export interface ConexaoSalva {
+  id: string;
+  apelido: string;
+  credenciais: Credenciais;
+}
+
 /** Frequências prontas (o backend aceita o preset ou cron de 5 campos). */
 export const CRON_PRESETS = [
   { id: '15min', rotulo: 'A cada 15 minutos', cron: '*/15 * * * *' },
@@ -115,6 +121,18 @@ export class ApiService {
       '/api/drivers/sqlserver-odbc/instalar',
       {},
     );
+  }
+
+  conexoesSalvas(): Observable<{ conexoes: ConexaoSalva[] }> {
+    return this.http.get<{ conexoes: ConexaoSalva[] }>('/api/conexoes/salvas');
+  }
+
+  salvarConexao(apelido: string, credenciais: Credenciais): Observable<ConexaoSalva> {
+    return this.http.post<ConexaoSalva>('/api/conexoes/salvas', { apelido, credenciais });
+  }
+
+  excluirConexao(id: string): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`/api/conexoes/salvas/${id}`);
   }
 
   dagsterStatus(project_dir: string): Observable<{ rodando: boolean; responde: boolean; externo: boolean; pid: number | null; url: string }> {

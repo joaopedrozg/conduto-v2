@@ -24,17 +24,23 @@ import { ConexaoComponent } from '../components/conexao.component';
 
     <div class="card" *ngIf="etapa() === 0">
       <h2>Conexões</h2>
+      <div class="nav-topo">
+        <span class="contagem">Passo 1 de 5</span>
+        <button (click)="carregarTabelas(); etapa.set(1)">Avançar →</button>
+      </div>
       <div class="cards">
         <section class="conexao"><conduto-conexao [titulo]="'Origem'" [valor]="origem" [sgbds]="sgbds()" [escolherSchema]="false" /></section>
-        <section class="conexao"><conduto-conexao [titulo]="'Destino'" [valor]="destino" [sgbds]="sgbds()" /></section>
-      </div>
-      <div class="acoes">
-        <button (click)="carregarTabelas(); etapa.set(1)">Avançar →</button>
+        <section class="conexao"><conduto-conexao [titulo]="'Destino'" [valor]="destino" [sgbds]="sgbds()" [salvas]="false" /></section>
       </div>
     </div>
 
     <div class="card" *ngIf="etapa() === 1">
       <h2>Tabelas da origem</h2>
+      <div class="nav-topo">
+        <button class="secundario" (click)="etapa.set(0)">← Voltar</button>
+        <span class="contagem">Passo 2 de 5</span>
+        <button (click)="etapa.set(2)">Avançar →</button>
+      </div>
       <label><input type="checkbox" [(ngModel)]="gerarAutomatico" /> Gerar a partir do banco (desmarcado = schemas de exemplo)</label>
       <div *ngIf="gerarAutomatico">
       <div class="linha">
@@ -54,7 +60,7 @@ import { ConexaoComponent } from '../components/conexao.component';
         <button type="button" class="secundario" (click)="carregarTabelas(true)">Trazer tudo</button>
       </div>
       <p class="contagem">{{ filtradas().length }} de {{ tabelasDisponiveis().length }} tabela(s) · {{ tabelasEscolhidas.length }} selecionada(s)</p>
-      <table class="tabelas" *ngIf="filtradas().length">
+      <table class="dados" *ngIf="filtradas().length">
         <thead><tr><th></th><th>Schema</th><th>Tabela</th></tr></thead>
         <tbody>
           <tr *ngFor="let t of paginaAtual()">
@@ -74,14 +80,15 @@ import { ConexaoComponent } from '../components/conexao.component';
         <button class="secundario" (click)="tabelasEscolhidas = []">Limpar seleção</button>
       </div>
       </div>
-      <div class="acoes">
-        <button class="secundario" (click)="etapa.set(0)">← Voltar</button>
-        <button (click)="etapa.set(2)">Avançar →</button>
-      </div>
     </div>
 
     <div class="card" *ngIf="etapa() === 2">
       <h2>Schedules</h2>
+      <div class="nav-topo">
+        <button class="secundario" (click)="etapa.set(1)">← Voltar</button>
+        <span class="contagem">Passo 3 de 5</span>
+        <button (click)="etapa.set(3)">Avançar →</button>
+      </div>
       <label><input type="checkbox" [(ngModel)]="gerarSchedules" /> Gerar schedules + código Dagster</label>
       <div *ngIf="gerarSchedules">
         <label>Frequência das cargas</label>
@@ -92,26 +99,28 @@ import { ConexaoComponent } from '../components/conexao.component';
         <p class="contagem">Cron aplicado: <code>{{ cronFinal() || '(padrão hora em hora)' }}</code></p>
       </div>
       <label><input type="checkbox" [(ngModel)]="aplicarDdl" /> Aplicar DDL no destino ao criar</label>
-      <div class="acoes">
-        <button class="secundario" (click)="etapa.set(1)">← Voltar</button>
-        <button (click)="etapa.set(3)">Revisar →</button>
-      </div>
     </div>
 
     <div class="card" *ngIf="etapa() === 3">
       <h2>Revisão</h2>
+      <div class="nav-topo">
+        <button class="secundario" (click)="etapa.set(2)">← Voltar</button>
+        <span class="contagem">Passo 4 de 5</span>
+        <button (click)="criar()">Criar projeto</button>
+      </div>
       <p><strong>Projeto:</strong> {{ nomeProjeto }} ({{ projectDir }})</p>
       <p><strong>Origem:</strong> {{ origem.tipo }} &#64; {{ origem.host }}/{{ origem.database }} · schema {{ origem.schema }}</p>
       <p><strong>Destino:</strong> {{ destino.tipo }} &#64; {{ destino.host }}/{{ destino.database }} · schema {{ destino.schema }}</p>
       <p><strong>Tabelas:</strong> {{ tabelasEscolhidas.length }} · <strong>Frequência:</strong> {{ cronFinal() || 'padrão' }}</p>
-      <div class="acoes">
-        <button class="secundario" (click)="etapa.set(2)">← Voltar</button>
-        <button (click)="criar()">Criar projeto</button>
-      </div>
     </div>
 
     <div class="card" *ngIf="etapa() === 4">
       <h2>Servidor Dagster</h2>
+      <div class="nav-topo">
+        <button class="secundario" (click)="etapa.set(3)">← Voltar</button>
+        <span class="contagem">Passo 5 de 5</span>
+        <span></span>
+      </div>
       <p><strong>Projeto:</strong> {{ projetoCriado || projectDir }}</p>
       <p class="contagem" *ngIf="dagster().pid">PID {{ dagster().pid }} (gerenciado pela Web UI)</p>
       <p *ngIf="dagster().responde">No ar em <a [href]="dagster().url" target="_blank">{{ dagster().url }}</a><span *ngIf="dagster().externo"> (externo — subido fora da Web UI)</span></p>
@@ -121,7 +130,6 @@ import { ConexaoComponent } from '../components/conexao.component';
         <button (click)="iniciarDagster()" [disabled]="dagster().rodando || dagster().responde">Subir servidor</button>
         <button class="secundario" (click)="atualizarDagster()">Atualizar status</button>
         <button class="secundario" (click)="pararDagster()" [disabled]="!dagster().rodando">Parar</button>
-        <button class="secundario" (click)="etapa.set(3)">Voltar à revisão</button>
       </div>
       <p class="contagem" *ngIf="dagster().externo">Servidor externo: pare pelo terminal que o subiu.</p>
     </div>
@@ -129,17 +137,13 @@ import { ConexaoComponent } from '../components/conexao.component';
     <pre class="log" *ngIf="log()">{{ log() }}</pre>
   `,
   styles: [
-    '.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }',
-    '.conexao { border: 1px solid var(--borda); border-radius: 8px; padding: 12px; }',
+    '.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }',
+    '.conexao { border: 1px solid var(--borda); border-radius: 8px; padding: 16px; background: #fff; }',
     '.linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }',
     '.linha button { margin: 0; }',
-    '.acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }',
-    '.acoes button { margin: 0; }',
     '.contagem { color: var(--neutro); font-size: .9em; }',
-    '.schemas { display: flex; gap: 12px; flex-wrap: wrap; margin: 4px 0 8px; }',
-    '.schemas label { display: inline-flex; gap: 4px; align-items: center; margin: 0; }',
-    'table.tabelas { width: 100%; border-collapse: collapse; margin: 8px 0; }',
-    'table.tabelas th, table.tabelas td { border-bottom: 1px solid var(--borda); padding: 6px 8px; text-align: left; }',
+    '.schemas { display: flex; gap: 8px 16px; flex-wrap: wrap; margin: 4px 0 8px; }',
+    '.schemas label { display: inline-flex; gap: 4px; align-items: center; margin: 0; font-weight: 400; }',
     '.freq label { display: block; margin: 4px 0; }',
   ],
 })
