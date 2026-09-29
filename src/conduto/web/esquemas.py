@@ -56,6 +56,10 @@ class PedidoInit(BaseModel):
 
 class PedidoCatalogo(BaseModel):
     credenciais: Credenciais
+    schemas: List[str] = Field(
+        default_factory=list,
+        description="Só tabelas destes schemas (vazio = todos).",
+    )
 
 
 class PedidoDdl(BaseModel):

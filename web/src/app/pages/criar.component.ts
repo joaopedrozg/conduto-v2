@@ -62,6 +62,7 @@ import { PastaComponent } from '../components/pasta.component';
       <div class="linha">
         <input [ngModel]="filtro()" (ngModelChange)="atualizarFiltro($event)" placeholder="Buscar nas tabelas dos schemas selecionados..." style="flex:1" />
         <button type="button" class="secundario" (click)="carregarTabelas()">Recarregar</button>
+        <button type="button" class="secundario" (click)="carregarTabelas(true)">Trazer tudo</button>
       </div>
       <p class="contagem">{{ filtradas().length }} de {{ tabelasDisponiveis().length }} tabela(s) · {{ tabelasEscolhidas.length }} selecionada(s)</p>
       <table class="tabelas" *ngIf="filtradas().length">
@@ -279,11 +280,17 @@ export class CriarComponent {
     this.toast.erro(backendIndisponivel(e) ? DICA_BACKEND_OFF : `${prefixo}: ${mensagemErroApi(e)}`);
   }
 
-  carregarTabelas(): void {
-    this.api.tabelas(this.origem).subscribe({
+  carregarTabelas(completo = false): void {
+    // Refinando (Recarregar com schemas desmarcados): o backend já traz só
+    // os selecionados. Primeira carga ou "Trazer tudo": tudo, depois marca todos.
+    const refinando = this.tabelasDisponiveis().length > 0 && !completo;
+    const filtroSchemas = refinando ? this.schemasEscolhidos() : [];
+    this.api.tabelas(this.origem, filtroSchemas).subscribe({
       next: (r) => {
         this.tabelasDisponiveis.set(r.tabelas);
-        this.schemasEscolhidos.set([...new Set(r.tabelas.map((t) => t.schema))].sort());
+        const todos = [...new Set(r.tabelas.map((t) => t.schema))].sort();
+        const mantidos = this.schemasEscolhidos().filter((s) => todos.includes(s));
+        this.schemasEscolhidos.set(mantidos.length && refinando ? mantidos : todos);
         this.tabelasEscolhidas = [];
         this.pagina.set(0);
         this.toast.ok(`${r.tabelas.length} tabela(s) na origem.`);

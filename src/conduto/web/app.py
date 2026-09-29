@@ -156,6 +156,9 @@ def criar_app() -> FastAPI:
         cred = pedido.credenciais.para_dict()
         try:
             tabelas = listar_tabelas_origem(_adapter(cred["tipo"]), cred)
+            if pedido.schemas:
+                pedidos = set(pedido.schemas)
+                tabelas = [t for t in tabelas if t.get("schema") in pedidos]
             return {"tabelas": tabelas}
         except Exception as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc

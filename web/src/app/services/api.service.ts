@@ -61,10 +61,10 @@ export class ApiService {
     return this.http.post<{ schemas: string[] }>('/api/catalogo/schemas', { credenciais });
   }
 
-  tabelas(credenciais: Credenciais): Observable<{ tabelas: { schema: string; table: string }[] }> {
+  tabelas(credenciais: Credenciais, schemas: string[] = []): Observable<{ tabelas: { schema: string; table: string }[] }> {
     return this.http.post<{ tabelas: { schema: string; table: string }[] }>(
       '/api/catalogo/tabelas',
-      { credenciais },
+      { credenciais, schemas },
     );
   }
 

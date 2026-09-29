@@ -98,6 +98,27 @@ def test_dagster_status_parado(tmp_path):
     assert corpo["url"] == "http://localhost:3000"
 
 
+def test_catalogo_tabelas_filtra_schemas(monkeypatch):
+    import conduto.schemas.schemas_auto as auto
+
+    monkeypatch.setattr(
+        auto,
+        "listar_tabelas_origem",
+        lambda adapter, cred: [
+            {"schema": "dbo", "table": "a"},
+            {"schema": "rh", "table": "b"},
+        ],
+    )
+    client = TestClient(criar_app())
+    corpo = {"credenciais": {"tipo": "sqlserver", "host": "h"}}
+    todas = client.post("/api/catalogo/tabelas", json=corpo)
+    assert todas.status_code == 200
+    assert len(todas.json()["tabelas"]) == 2
+    filtradas = client.post("/api/catalogo/tabelas", json={**corpo, "schemas": ["rh"]})
+    assert filtradas.status_code == 200
+    assert filtradas.json()["tabelas"] == [{"schema": "rh", "table": "b"}]
+
+
 def test_diretorio_frontend_compilado_ou_ausente():
     from conduto.web.app import diretorio_frontend
 
