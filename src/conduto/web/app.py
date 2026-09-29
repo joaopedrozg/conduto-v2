@@ -309,11 +309,15 @@ def criar_app() -> FastAPI:
         from conduto.schemas.schemas_inferir import inferir_colunas
 
         try:
-            inferidas = inferir_colunas(Path(pedido.project_dir), pedido.tabela)
+            inferidas = inferir_colunas(Path(pedido.project_dir), pedido.tabela, pedido.forcar)
         except Exception as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
         if not inferidas:
-            raise HTTPException(status_code=400, detail="Nada a inferir.")
+            raise HTTPException(
+                status_code=400,
+                detail="Nada a inferir: todos os schemas já têm colunas "
+                "(marque Re-inferir para forçar).",
+            )
         return {"inferidas": inferidas}
 
     @app.get("/api/drivers/faltantes")

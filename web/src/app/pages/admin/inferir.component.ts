@@ -13,8 +13,9 @@ import { notificarErro } from '../../services/erro-api';
   template: `
     <div class="card">
       <h2>Inferir colunas</h2>
-      <label>Tabela (vazio = todas sem colunas)</label>
+      <label>Tabela (vazio = todas)</label>
       <input [(ngModel)]="tabela" placeholder="Ex.: clientes" />
+      <label><input type="checkbox" [(ngModel)]="forcar" /> Re-inferir também as que já têm colunas (sobrescreve)</label>
       <div>
         <button (click)="inferir()">Inferir da origem</button>
       </div>
@@ -27,10 +28,11 @@ export class InferirComponent {
   private toast = inject(ToastService);
   private ctx = inject(AdminContext);
   tabela = '';
+  forcar = false;
   log = signal('');
 
   inferir(): void {
-    this.api.inferir(this.ctx.projectDir(), this.tabela.trim() || undefined).subscribe({
+    this.api.inferir(this.ctx.projectDir(), this.tabela.trim() || undefined, this.forcar).subscribe({
       next: (r) => {
         this.log.set(JSON.stringify(r, null, 2));
         this.toast.ok('Colunas inferidas.');

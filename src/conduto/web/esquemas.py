@@ -88,6 +88,7 @@ class PedidoDagster(BaseModel):
 class PedidoInferir(BaseModel):
     project_dir: str = "."
     tabela: Optional[str] = None
+    forcar: bool = Field(default=False, description="Re-infere tudo, sobrescrevendo colunas.")
 
 
 class PedidoDriver(BaseModel):

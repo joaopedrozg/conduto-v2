@@ -41,7 +41,7 @@ def _preparar(monkeypatch, alvo, schema_env="dbo", sem_env_schema=False):
     monkeypatch.setattr(si, "ler_env", lambda project_dir: env)
     # _credenciais_origem nao e mockada de proposito: e pura (so le o .env e o
     # ADAPTERS) e resolve o schema com env ou o padrao do SGBD.
-    monkeypatch.setattr(si, "_candidatas", lambda project_dir, alvo_t: [alvo])
+    monkeypatch.setattr(si, "_candidatas", lambda project_dir, alvo_t, forcar=False: [alvo])
     monkeypatch.setattr(si, "abrir_conexao", lambda adapter, cred: None)
     monkeypatch.setattr(si, "progresso", _progresso)
     monkeypatch.setattr(si, "_mostrar_resumo", lambda resumo: None)
@@ -170,6 +170,22 @@ def test_inferir_nao_pula_tabela_quando_descrever_falha(tmp_path, monkeypatch):
     assert si.inferir_colunas(tmp_path) == []
     assert consultas == [{"schema": "origem", "table": "t"}]
     assert not (tmp_path / "schemas" / "t.yml").exists()
+
+
+def test_candidatas_forcar_inclui_quem_ja_tem_colunas(tmp_path):
+    (tmp_path / "schemas").mkdir()
+    (tmp_path / "schemas" / "com.yml").write_text(
+        "table: com\ncolumns:\n  - {name: id, type: integer}\n", encoding="utf-8"
+    )
+    (tmp_path / "schemas" / "sem.yml").write_text("table: sem\n", encoding="utf-8")
+    (tmp_path / "main.yml").write_text(
+        "version: '1.0'\nproject: x\ntables:\n  - {path: schemas/com.yml}\n  - {path: schemas/sem.yml}\n",
+        encoding="utf-8",
+    )
+    normal = {a["table"] for a in si._candidatas(tmp_path, None)}
+    assert normal == {"sem"}
+    forcadas = {a["table"] for a in si._candidatas(tmp_path, None, forcar=True)}
+    assert forcadas == {"com", "sem"}
 
 
 # ---------------------------------------------------------------------------

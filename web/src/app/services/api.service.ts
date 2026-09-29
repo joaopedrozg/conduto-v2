@@ -93,8 +93,8 @@ export class ApiService {
     return this.http.post('/api/projeto/schedules', { project_dir, cron });
   }
 
-  inferir(project_dir: string, tabela?: string): Observable<object> {
-    return this.http.post('/api/projeto/inferir', { project_dir, tabela });
+  inferir(project_dir: string, tabela?: string, forcar = false): Observable<object> {
+    return this.http.post('/api/projeto/inferir', { project_dir, tabela, forcar });
   }
 
   driversFaltantes(tipo: string): Observable<{ tipo: string; faltantes: string[]; requisicoes: string[] }> {
