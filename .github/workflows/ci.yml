@@ -29,6 +29,18 @@ jobs:
       - name: Check README sync
         run: uv run python scripts/check_readme_sync.py
 
+      - name: Set up Node (build do frontend Angular)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build frontend (testes usam o build real)
+        run: |
+          npm ci --prefix web
+          npm run build --prefix web
+
       - name: Run tests
         run: uv run pytest -q
 

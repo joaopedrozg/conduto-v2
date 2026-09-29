@@ -531,12 +531,22 @@ def _schema_origem_manual(adapter, credenciais: dict, conectou: bool) -> str:
     "Exemplos:\n"
     "  conduto init meu_projeto       cria um projeto novo\n"
     "  conduto init .                 administra o projeto atual\n"
-    "  conduto init                   dentro de um projeto, administra"
+    "  conduto init                   dentro de um projeto, administra\n"
+    "  conduto init meu_projeto --web cria pela Web UI (pula a TUI)"
 ))
 def init(
     project_name: str = typer.Argument(None, help=t("Nome do projeto ('.' = o diretório atual)")),
+    web: bool = typer.Option(False, "--web", help=t("Abre a Web UI em vez da TUI")),
+    web_host: str = typer.Option("127.0.0.1", "--web-host", help=t("Endereço IP da Web UI")),
+    web_port: int = typer.Option(8080, "--web-port", "-p", help=t("Porta da Web UI")),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help=t("Abre o navegador automaticamente")),
 ):
     """Abre a interface do ``init`` (ou o passo a passo legado, sem terminal)."""
+    # `is True`: testes chamam init() direto e os defaults chegam como
+    # OptionInfo (truthy) — só o bool real do typer liga o modo web.
+    if web is True:
+        return _init_web(project_name, host=web_host, port=web_port, open_browser=open_browser)
+
     from conduto.tui.prompts import _tem_terminal
 
     if not _tem_terminal():
@@ -577,6 +587,145 @@ def init(
         _subir_servidor_dagster(Path(resultado["project_dir"]))
     elif resultado and resultado.get("acao") == "docs":
         docs(str(Path(resultado["project_dir"])))
+
+
+def _montar_url_web(host: str, port: int, rota: str, params: dict) -> str:
+    """URL da Web UI com o contexto do projeto (nome/dir) para o Angular ler."""
+    from urllib.parse import urlencode
+
+    base = f"http://{host}:{port}/{rota.lstrip('/')}"
+    return f"{base}?{urlencode(params)}" if params else base
+
+
+def _api_respondendo(host: str, port: int) -> bool:
+    """True se já há uma API conduto respondendo (porta ocupada por ela)."""
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"http://{host}:{port}/api/saude", timeout=1):
+            return True
+    except Exception:
+        return False
+
+
+def _cauda_log(caminho: Path, linhas: int = 15) -> str:
+    """Últimas linhas do log da API (diagnóstico quando ela morre cedo)."""
+    try:
+        texto = Path(caminho).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return ""
+    return "\n".join(texto[-linhas:])
+
+
+def _init_web(
+    project_name: Optional[str],
+    host: str = "127.0.0.1",
+    port: int = 8080,
+    open_browser: bool = True,
+) -> None:
+    """``conduto init nome --web``: API em background + frontend compilado.
+
+    Cria o projeto na pasta ``./nome`` (sem perguntar o local — o wizard já
+    abre com nome e pasta preenchidos) e a página Administrar lê o projeto
+    atual sozinha. O Ctrl+C encerra o servidor leve e a API junto.
+    """
+    import subprocess
+    import sys
+    import time
+    import urllib.request
+    import webbrowser
+
+    from conduto.web.app import diretorio_frontend
+
+    cwd = Path.cwd()
+    nome_arg = (project_name or "").strip() or None
+    if nome_arg in (None, "."):
+        alvo, nome = cwd, cwd.name
+    else:
+        alvo, nome = cwd / nome_arg, nome_arg
+
+    if diretorio_frontend() is None:
+        console.print(erro(
+            "Frontend Angular não compilado. Compile antes: cd web && npm install && npm run build"
+        ))
+        raise typer.Exit(code=1)
+
+    if _api_respondendo(host, port):
+        # Porta já servindo: sem isso o health-check passaria contra o
+        # servidor velho enquanto o nosso morria no bind ("encerrou sozinha").
+        console.print(erro(
+            "Já há um servidor em http://{host}:{port} (talvez um conduto web antigo). "
+            "Encerre com 'conduto parar --port {port}' ou use --web-port outra porta.",
+            host=host, port=port,
+        ))
+        raise typer.Exit(code=1)
+
+    # print() simples: sem terminal o rich quebra no cp1252 (ver `web`).
+    print(f"Subindo a Web UI do conduto para o projeto '{nome}'...")
+    import tempfile
+
+    log_api = Path(tempfile.gettempdir()) / f"conduto-web-{port}.log"
+    saida = open(log_api, "w", encoding="utf-8")
+    try:
+        api = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "conduto.web.app:app",
+             "--host", host, "--port", str(port)],
+            stdout=saida,
+            stderr=subprocess.STDOUT,
+        )
+    except OSError as exc:
+        saida.close()
+        console.print(erro("Falha ao iniciar a API: {erro}", erro=exc))
+        raise typer.Exit(code=1)
+
+    saude = f"http://{host}:{port}/api/saude"
+    for _ in range(50):
+        if api.poll() is not None:
+            console.print(erro(
+                "A API encerrou antes de responder. Trecho do log ({log}):\n{cauda}",
+                log=log_api, cauda=_cauda_log(log_api),
+            ))
+            saida.close()
+            raise typer.Exit(code=1)
+        try:
+            with urllib.request.urlopen(saude, timeout=1):
+                break
+        except Exception:
+            time.sleep(0.5)
+    else:
+        api.terminate()
+        saida.close()
+        console.print(erro("A API não respondeu em {url}.", url=saude))
+        raise typer.Exit(code=1)
+
+    # Confirma que quem responde é o nosso processo (evita carona em server velho).
+    time.sleep(1)
+    if api.poll() is not None:
+        console.print(erro(
+            "A API caiu logo após subir. Trecho do log ({log}):\n{cauda}",
+            log=log_api, cauda=_cauda_log(log_api),
+        ))
+        saida.close()
+        raise typer.Exit(code=1)
+
+    url = _montar_url_web(host, port, "criar", {"nome": nome, "dir": str(alvo.resolve())})
+    print(f"Criando '{nome}' em: {alvo.resolve()}")
+    print(f"Acesse: {url}  (Ctrl+C encerra a Web UI e a API)")
+    if open_browser:
+        webbrowser.open(url)
+    try:
+        api.wait()
+        console.print(aviso("A API encerrou — encerrando o conduto web."))
+    except KeyboardInterrupt:
+        print("Encerrando a Web UI e a API...")
+    finally:
+        saida.close()
+        if api.poll() is None:
+            api.terminate()
+            try:
+                api.wait(timeout=15)
+            except Exception:
+                api.kill()
 
 
 def _init_corpo(project_name: Optional[str]) -> None:
@@ -912,6 +1061,74 @@ def docs(
         servir_docs(project_dir, host=host, port=port, abrir_navegador=open_browser)
     except RuntimeError as exc:
         console.print(erro("Falha ao subir o servidor de documentação: {erro}", erro=exc))
+        raise typer.Exit(code=1)
+
+
+@app.command(help=t(
+    "Abre a Web UI (Angular + API): cria/administra o projeto no navegador.\n"
+    "\n"
+    "A TUI Textual continua disponível via `conduto init` — a Web UI é alternativa.\n"
+    "\n"
+    "Exemplo:\n"
+    "  conduto web                     acesse http://localhost:8080"
+))
+def web(
+    host: str = typer.Option("127.0.0.1", "--host", help=t("Endereço IP em que o servidor escuta")),
+    port: int = typer.Option(8080, "--port", "-p", help=t("Porta do servidor da Web UI")),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help=t("Abre o navegador automaticamente")),
+):
+    """Sobe o backend FastAPI que serve a Web UI Angular (a TUI segue intacta)."""
+    import webbrowser
+
+    try:
+        import uvicorn
+
+        from conduto.web.app import criar_app
+    except ImportError:
+        console.print(erro(
+            "Dependências da Web UI ausentes. Instale com: pip install \"conduto[web]\" ou uv sync"
+        ))
+        raise typer.Exit(code=1)
+    url = f"http://{host}:{port}/"
+    # print() simples de propósito: o banner rich (separador ─) quebra em
+    # console sem terminal (cp1252 em background/pipe) — e este log vai
+    # para arquivos de log quando o servidor roda em segundo plano.
+    print(f"Web UI do conduto (Angular + API) em: {url}  (API em {url}docs)")
+    print("A TUI continua em: conduto init  |  Pressione Ctrl+C para encerrar.")
+    if open_browser:
+        webbrowser.open(url)
+    uvicorn.run(criar_app(), host=host, port=port)
+
+
+@app.command(help=t(
+    "Encerra o servidor da Web UI que escuta na porta.\n"
+    "\n"
+    "Exemplo:\n"
+    "  conduto parar                   encerra quem está na porta 8080\n"
+    "  conduto parar --port 8090       encerra quem está na porta 8090"
+))
+def parar(
+    port: int = typer.Option(8080, "--port", "-p", help=t("Porta do servidor a encerrar")),
+    sim: bool = typer.Option(False, "--sim", help=t("Encerra sem perguntar")),
+):
+    """Localiza quem escuta na porta e encerra (o `init --web`/`web` antigo)."""
+    from conduto.tui.prompts import _tem_terminal
+    from conduto.web.servidor import nome_processo, parar_servidor, pids_na_porta
+
+    pids = pids_na_porta(port)
+    if not pids:
+        console.print(info("Nenhum servidor na porta {port}.", port=port))
+        return
+    for pid in pids:
+        console.print(neutro(
+            "Na porta {port}: {nome} (PID {pid})", port=port, nome=nome_processo(pid) or "processo", pid=pid,
+        ))
+    if not sim and _tem_terminal():
+        if not confirmar("Encerrar?", padrao=True):
+            cancelar()
+    ok, mensagem = parar_servidor(port)
+    console.print(sucesso(mensagem) if ok else erro(mensagem))
+    if not ok:
         raise typer.Exit(code=1)
 
 

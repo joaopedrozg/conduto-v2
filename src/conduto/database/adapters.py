@@ -347,7 +347,8 @@ def _testar_sqlserver(credenciais: dict) -> Tuple[bool, str]:
         conn.close()
         return True, "ok"
     except Exception as erro:
-        return False, str(erro)
+        mensagem = str(erro)
+        return False, mensagem + _dica_erro_sqlserver(mensagem)
 
 def _testar_clickhouse(credenciais: dict) -> Tuple[bool, str]:
     try:
@@ -435,6 +436,41 @@ def _dica_erro_dns(host: str) -> str:
             "(porta 5432) e usuario postgres.<ref-do-projeto>."
         )
     return " Dica: o host nao resolveu no DNS. Confira o endereco e a conexao com a internet."
+
+
+def _dica_erro_sqlserver(mensagem: str) -> str:
+    """Dicas em português para os erros mais comuns do SQL Server (por código)."""
+    dicas = []
+    if "18456" in mensagem:
+        dicas.append(
+            "login recusado (18456): confira usuário e senha; se o servidor só aceita "
+            "autenticação do Windows, use um login SQL ou peça ao DBA para habilitar o modo misto."
+        )
+    if "4060" in mensagem:
+        dicas.append(
+            "banco inacessível (4060): o login não tem acesso ao DATABASE informado — "
+            "confira o nome do banco ou peça acesso ao DBA."
+        )
+    if "18452" in mensagem or "17806" in mensagem:
+        dicas.append(
+            "logon de domínio/SSPI falhou: esta conexão usa login SQL (usuário+senha), "
+            "não a conta do Windows."
+        )
+    baixo = mensagem.lower()
+    if "ssl provider" in baixo or "certificate" in baixo:
+        dicas.append(
+            "erro de certificado/criptografia: o conduto já envia TrustServerCertificate=yes; "
+            "se persistir, confira a configuração de criptografia do servidor."
+        )
+    if "atributo de cadeia de conexão inválido" in baixo:
+        dicas.append(
+            "atributo inválido na conexão: confira se host/porta/banco não contêm ';', '{' ou '}'."
+        )
+    if "timeout" in baixo or "01000" in mensagem or "08001" in mensagem:
+        dicas.append(
+            "servidor inalcançável: confira host/porta, VPN e se o SQL Server aceita conexões TCP."
+        )
+    return (" Dica: " + " ".join(dicas)) if dicas else ""
 
 
 def _baixar_msi_odbc(url: str, destino: Path) -> Tuple[bool, str]:

@@ -55,8 +55,14 @@ def _credenciais_origem(env: Dict[str, str]):
     return adapter, credenciais, schema
 
 
-def _candidatas(project_dir: Path, tabela_alvo: Optional[str]) -> List[Dict[str, Any]]:
-    """Lista as tabelas que precisam de inferencia (sem colunas no schema)."""
+def _candidatas(
+    project_dir: Path, tabela_alvo: Optional[str], forcar: bool = False
+) -> List[Dict[str, Any]]:
+    """Lista as tabelas que precisam de inferencia.
+
+    Sem ``forcar``: só as sem colunas no schema. Com ``forcar``: todas as
+    com ``table`` (re-inferencia, sobrescreve as colunas).
+    """
     main_path = project_dir / "main.yml"
     caminhos: List[str] = []
     if main_path.exists():
@@ -87,7 +93,7 @@ def _candidatas(project_dir: Path, tabela_alvo: Optional[str]) -> List[Dict[str,
         arquivo = project_dir / caminho
         if arquivo.exists():
             dados = _ler_schema(arquivo)
-            if dados.get("table") and not dados.get("columns"):
+            if dados.get("table") and (forcar or not dados.get("columns")):
                 alvos.append({"table": dados["table"], "path": caminho, "dados": dados})
                 vistos.add(caminho)
         else:
@@ -97,7 +103,7 @@ def _candidatas(project_dir: Path, tabela_alvo: Optional[str]) -> List[Dict[str,
         if caminho in vistos:
             continue
         dados = _ler_schema(arquivo)
-        if dados.get("table") and not dados.get("columns"):
+        if dados.get("table") and (forcar or not dados.get("columns")):
             alvos.append({"table": dados["table"], "path": caminho, "dados": dados})
 
     return alvos
@@ -126,11 +132,14 @@ def _mostrar_resumo(inferidas: List[Dict[str, Any]]) -> None:
     console.print(grade)
 
 
-def inferir_colunas(project_dir: Path, tabela_alvo: Optional[str] = None) -> List[Dict[str, Any]]:
+def inferir_colunas(
+    project_dir: Path, tabela_alvo: Optional[str] = None, forcar: bool = False
+) -> List[Dict[str, Any]]:
     """Infere as colunas das tabelas da origem e atualiza os schemas YAML.
 
     Se ``tabela_alvo`` for informado, infere (ou re-infere) somente essa tabela.
-    Caso contrario, infere todos os schemas que ainda nao tem colunas:
+    Caso contrario, infere todos os schemas que ainda nao tem colunas — ou
+    todos, com ``forcar=True`` (sobrescreve as colunas existentes):
     arquivos do main.yml, caminhos do main.yml sem arquivo e schemas/*.yml
     fora do main.yml. Devolve o resumo das tabelas inferidas.
     """
@@ -139,7 +148,7 @@ def inferir_colunas(project_dir: Path, tabela_alvo: Optional[str] = None) -> Lis
     adapter, credenciais, schema_origem = _credenciais_origem(env)
     schema_destino = env.get("DB_DESTINO_SCHEMA") or "public"
 
-    alvos = _candidatas(project_dir, tabela_alvo)
+    alvos = _candidatas(project_dir, tabela_alvo, forcar)
     if not alvos:
         console.print(aviso("Nenhum schema sem colunas encontrado."))
         return []
