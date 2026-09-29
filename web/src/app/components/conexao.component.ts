@@ -37,11 +37,11 @@ import { DICA_BACKEND_OFF, backendIndisponivel, mensagemErroApi } from '../servi
     <select *ngIf="bancos().length" [(ngModel)]="valor.database" (change)="aoEscolherBanco()">
       <option *ngFor="let b of bancos()" [value]="b">{{ b }}</option>
     </select>
-    <div class="linha" *ngIf="bancos().length">
-      <button class="secundario" (click)="carregarSchemas()">Carregar schemas</button>
+    <div class="linha" *ngIf="escolherSchema && bancos().length">
+      <button type="button" class="secundario" (click)="carregarSchemas()">Carregar schemas</button>
     </div>
-    <label *ngIf="schemasList().length">Schema</label>
-    <select *ngIf="schemasList().length" [(ngModel)]="valor.schema">
+    <label *ngIf="escolherSchema && schemasList().length">Schema</label>
+    <select *ngIf="escolherSchema && schemasList().length" [(ngModel)]="valor.schema">
       <option *ngFor="let s of schemasList()" [value]="s">{{ s }}</option>
     </select>
     <div class="linha">
@@ -64,6 +64,8 @@ export class ConexaoComponent {
   @Input() titulo = '';
   @Input() valor!: Credenciais;
   @Input() sgbds: Sgbd[] = [];
+  /** false na origem: o schema é escolhido no passo Tabelas, não aqui. */
+  @Input() escolherSchema = true;
   estado = signal('');
   bancos = signal<string[]>([]);
   schemasList = signal<string[]>([]);
@@ -118,13 +120,14 @@ export class ConexaoComponent {
           this.valor.database = r.bancos[0];
         }
         if (!silencioso) this.dizer(`${r.bancos.length} banco(s) carregado(s).`, 'ok');
-        if (r.bancos.length) this.carregarSchemas(true);
+        if (this.escolherSchema && r.bancos.length) this.carregarSchemas(true);
       },
       error: (e) => this.falhou(e, 'Bancos'),
     });
   }
 
   aoEscolherBanco(): void {
+    if (!this.escolherSchema) return;
     this.valor.schema = '';
     this.carregarSchemas();
   }

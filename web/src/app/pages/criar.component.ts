@@ -35,7 +35,7 @@ import { PastaComponent } from '../components/pasta.component';
     <div class="card" *ngIf="etapa() === 1">
       <h2>Conexões</h2>
       <div class="cards">
-        <section class="conexao"><conduto-conexao [titulo]="'Origem'" [valor]="origem" [sgbds]="sgbds()" /></section>
+        <section class="conexao"><conduto-conexao [titulo]="'Origem'" [valor]="origem" [sgbds]="sgbds()" [escolherSchema]="false" /></section>
         <section class="conexao"><conduto-conexao [titulo]="'Destino'" [valor]="destino" [sgbds]="sgbds()" /></section>
       </div>
       <div class="acoes">
