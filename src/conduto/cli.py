@@ -655,7 +655,8 @@ def _init_web(
         # servidor velho enquanto o nosso morria no bind ("encerrou sozinha").
         console.print(erro(
             "Já há um servidor em http://{host}:{port} (talvez um conduto web antigo). "
-            "Encerre-o ou use --web-port outra porta.", host=host, port=port,
+            "Encerre com 'conduto parar --port {port}' ou use --web-port outra porta.",
+            host=host, port=port,
         ))
         raise typer.Exit(code=1)
 
@@ -1097,6 +1098,38 @@ def web(
     if open_browser:
         webbrowser.open(url)
     uvicorn.run(criar_app(), host=host, port=port)
+
+
+@app.command(help=t(
+    "Encerra o servidor da Web UI que escuta na porta.\n"
+    "\n"
+    "Exemplo:\n"
+    "  conduto parar                   encerra quem está na porta 8080\n"
+    "  conduto parar --port 8090       encerra quem está na porta 8090"
+))
+def parar(
+    port: int = typer.Option(8080, "--port", "-p", help=t("Porta do servidor a encerrar")),
+    sim: bool = typer.Option(False, "--sim", help=t("Encerra sem perguntar")),
+):
+    """Localiza quem escuta na porta e encerra (o `init --web`/`web` antigo)."""
+    from conduto.tui.prompts import _tem_terminal
+    from conduto.web.servidor import nome_processo, parar_servidor, pids_na_porta
+
+    pids = pids_na_porta(port)
+    if not pids:
+        console.print(info("Nenhum servidor na porta {port}.", port=port))
+        return
+    for pid in pids:
+        console.print(neutro(
+            "Na porta {port}: {nome} (PID {pid})", port=port, nome=nome_processo(pid) or "processo", pid=pid,
+        ))
+    if not sim and _tem_terminal():
+        if not confirmar("Encerrar?", padrao=True):
+            cancelar()
+    ok, mensagem = parar_servidor(port)
+    console.print(sucesso(mensagem) if ok else erro(mensagem))
+    if not ok:
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":
