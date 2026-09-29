@@ -130,23 +130,23 @@ def criar_app() -> FastAPI:
         return {"ok": ok, "mensagem": mensagem}
 
     @app.get("/api/conexoes/salvas")
-    def conexoes_salvas():
+    def conexoes_salvas(project_dir: str = "."):
         from conduto.web import conexoes_salvas as _salvas
 
-        return {"conexoes": _salvas.listar()}
+        return {"conexoes": _salvas.listar(project_dir)}
 
     @app.post("/api/conexoes/salvas")
     def conexao_salvar(pedido: E.PedidoConexaoSalva):
         from conduto.web import conexoes_salvas as _salvas
 
         _adapter(pedido.credenciais.tipo)  # 400 se tipo desconhecido
-        return _salvas.salvar(pedido.apelido, pedido.credenciais.para_dict())
+        return _salvas.salvar(pedido.apelido, pedido.credenciais.para_dict(), pedido.project_dir)
 
     @app.delete("/api/conexoes/salvas/{identificador}")
-    def conexao_remover(identificador: str):
+    def conexao_remover(identificador: str, project_dir: str = "."):
         from conduto.web import conexoes_salvas as _salvas
 
-        if not _salvas.remover(identificador):
+        if not _salvas.remover(identificador, project_dir):
             raise HTTPException(status_code=404, detail="Conexão salva não encontrada.")
         return {"ok": True}
 

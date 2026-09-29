@@ -123,16 +123,20 @@ export class ApiService {
     );
   }
 
-  conexoesSalvas(): Observable<{ conexoes: ConexaoSalva[] }> {
-    return this.http.get<{ conexoes: ConexaoSalva[] }>('/api/conexoes/salvas');
+  conexoesSalvas(project_dir: string): Observable<{ conexoes: ConexaoSalva[] }> {
+    return this.http.get<{ conexoes: ConexaoSalva[] }>('/api/conexoes/salvas', {
+      params: { project_dir },
+    });
   }
 
-  salvarConexao(apelido: string, credenciais: Credenciais): Observable<ConexaoSalva> {
-    return this.http.post<ConexaoSalva>('/api/conexoes/salvas', { apelido, credenciais });
+  salvarConexao(apelido: string, credenciais: Credenciais, project_dir: string): Observable<ConexaoSalva> {
+    return this.http.post<ConexaoSalva>('/api/conexoes/salvas', { apelido, credenciais, project_dir });
   }
 
-  excluirConexao(id: string): Observable<{ ok: boolean }> {
-    return this.http.delete<{ ok: boolean }>(`/api/conexoes/salvas/${id}`);
+  excluirConexao(id: string, project_dir: string): Observable<{ ok: boolean }> {
+    return this.http.delete<{ ok: boolean }>(`/api/conexoes/salvas/${id}`, {
+      params: { project_dir },
+    });
   }
 
   dagsterStatus(project_dir: string): Observable<{ rodando: boolean; responde: boolean; externo: boolean; pid: number | null; url: string }> {

@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute, RouterOutlet } from '@angular/router';
 import { AdminContext } from '../../services/admin-context.service';
-import { CriarComponent } from '../criar.component';
 
 /**
  * Casca do Administrar: diretório do projeto + outlet dos submenus
@@ -20,10 +19,9 @@ export class AdminShellComponent {
   private rota = inject(ActivatedRoute);
 
   constructor() {
-    // Projeto atual: ?projeto= da URL, senão o contexto guardado pelo wizard.
-    const viaUrl = (this.rota.snapshot.queryParamMap.get('projeto') || '').trim();
-    const ctx = CriarComponent.lerContexto();
-    if (viaUrl) this.ctx.projectDir.set(viaUrl);
-    else if (ctx?.dir) this.ctx.projectDir.set(ctx.dir);
+    // Projeto atual via URL (?projeto= ou ?dir=, preservados na sidebar).
+    const params = this.rota.snapshot.queryParamMap;
+    const dir = (params.get('projeto') || params.get('dir') || '').trim();
+    if (dir) this.ctx.projectDir.set(dir);
   }
 }

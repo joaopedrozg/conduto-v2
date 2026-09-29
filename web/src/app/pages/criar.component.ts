@@ -29,7 +29,7 @@ import { ConexaoComponent } from '../components/conexao.component';
     <div class="card" *ngIf="etapa() === 0">
       <h2>Conexões</h2>
       <div class="cards">
-        <section class="conexao"><conduto-conexao [titulo]="'Origem'" [valor]="origem" [sgbds]="sgbds()" [escolherSchema]="false" /></section>
+        <section class="conexao"><conduto-conexao [titulo]="'Origem'" [valor]="origem" [sgbds]="sgbds()" [escolherSchema]="false" [projetoDir]="projectDir" /></section>
         <section class="conexao"><conduto-conexao [titulo]="'Destino'" [valor]="destino" [sgbds]="sgbds()" [salvas]="false" /></section>
       </div>
     </div>
@@ -227,33 +227,7 @@ export class CriarComponent {
     if (nome) {
       this.nomeProjeto = nome;
       this.projectDir = dir || `./${nome}`;
-      this.guardarContexto();
     }
-  }
-
-  private guardarContexto(): void {
-    try {
-      localStorage.setItem(
-        'conduto.projeto',
-        JSON.stringify({ nome: this.nomeProjeto, dir: this.projectDir }),
-      );
-    } catch {
-      /* navegação privada: segue sem persistir */
-    }
-  }
-
-  static lerContexto(): { nome: string; dir: string } | null {
-    try {
-      const raw = localStorage.getItem('conduto.projeto');
-      if (!raw) return null;
-      const ctx = JSON.parse(raw);
-      if (typeof ctx?.dir === 'string' && ctx.dir) {
-        return { nome: String(ctx.nome ?? ''), dir: ctx.dir };
-      }
-    } catch {
-      /* ignora contexto corrompido */
-    }
-    return null;
   }
 
   classePasso(i: number): string {
@@ -336,7 +310,6 @@ export class CriarComponent {
           const resp = r as Record<string, unknown>;
           this.projetoCriado = String(resp['project_dir'] ?? this.projectDir);
           this.projectDir = this.projetoCriado;
-          this.guardarContexto();
           this.log.set('Projeto criado: ' + JSON.stringify(resp, null, 2));
           this.toast.ok(`Projeto criado em ${this.projetoCriado}.`);
           this.etapa.set(4);

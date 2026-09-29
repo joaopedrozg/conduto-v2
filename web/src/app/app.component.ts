@@ -14,15 +14,15 @@ import { ToastsComponent } from './components/toasts.component';
     </header>
     <div class="layout">
       <aside class="lateral">
-        <a routerLink="/criar" routerLinkActive="ativo">Meu pipeline</a>
-        <a routerLink="/admin" routerLinkActive="ativo">Administrar</a>
+        <a routerLink="/criar" routerLinkActive="ativo" queryParamsHandling="preserve">Meu pipeline</a>
+        <a routerLink="/admin" routerLinkActive="ativo" queryParamsHandling="preserve">Administrar</a>
         <nav class="sub">
-          <a routerLink="/admin/visao" routerLinkActive="ativo">Visão geral</a>
-          <a routerLink="/admin/ddl" routerLinkActive="ativo">DDL</a>
-          <a routerLink="/admin/schedules" routerLinkActive="ativo">Schedules</a>
-          <a routerLink="/admin/inferir" routerLinkActive="ativo">Inferir</a>
-          <a routerLink="/admin/servidores" routerLinkActive="ativo">Servidores</a>
-          <a routerLink="/admin/drivers" routerLinkActive="ativo">Drivers</a>
+          <a routerLink="/admin/visao" routerLinkActive="ativo" queryParamsHandling="preserve">Visão geral</a>
+          <a routerLink="/admin/ddl" routerLinkActive="ativo" queryParamsHandling="preserve">DDL</a>
+          <a routerLink="/admin/schedules" routerLinkActive="ativo" queryParamsHandling="preserve">Schedules</a>
+          <a routerLink="/admin/inferir" routerLinkActive="ativo" queryParamsHandling="preserve">Inferir</a>
+          <a routerLink="/admin/servidores" routerLinkActive="ativo" queryParamsHandling="preserve">Servidores</a>
+          <a routerLink="/admin/drivers" routerLinkActive="ativo" queryParamsHandling="preserve">Drivers</a>
         </nav>
       </aside>
       <main><router-outlet /></main>

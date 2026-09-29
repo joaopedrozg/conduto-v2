@@ -52,12 +52,13 @@ import { DICA_BACKEND_OFF, backendIndisponivel, mensagemErroApi } from '../servi
       </button>
     </div>
     <div *ngIf="salvas">
-      <h4>Conexões salvas</h4>
+      <h4>Conexões salvas no projeto</h4>
       <div class="linha">
         <input [(ngModel)]="apelido" placeholder="Nome (ex.: produção)" style="flex:1" />
         <button type="button" class="secundario" (click)="salvarAtual()">Salvar atual</button>
       </div>
-      <table class="dados" *ngIf="salvasLista().length">
+      <div class="rolagem" *ngIf="salvasLista().length">
+      <table class="dados">
         <thead><tr><th>Nome</th><th>SGBD</th><th>Host</th><th>Banco</th><th>Usuário</th><th></th></tr></thead>
         <tbody>
           <tr *ngFor="let s of salvasLista()" class="clicavel" (click)="usarSalva(s)" title="Clique para usar">
@@ -70,6 +71,7 @@ import { DICA_BACKEND_OFF, backendIndisponivel, mensagemErroApi } from '../servi
           </tr>
         </tbody>
       </table>
+      </div>
       <p class="contagem" *ngIf="!salvasLista().length">Nenhuma salva — preencha e clique em Salvar atual.</p>
     </div>
   `,
@@ -78,6 +80,8 @@ import { DICA_BACKEND_OFF, backendIndisponivel, mensagemErroApi } from '../servi
     '.linha button { margin: 4px 0 0; }',
     '.estado { font-size: 0.9em; color: var(--neutro); }',
     'h4 { margin: 14px 0 6px; }',
+    '.rolagem { overflow-x: auto; margin: 8px -4px; padding: 0 4px; }',
+    '.rolagem table.dados { min-width: 560px; }',
   ],
 })
 export class ConexaoComponent implements OnInit {
@@ -90,6 +94,8 @@ export class ConexaoComponent implements OnInit {
   @Input() escolherSchema = true;
   /** Tabela de conexões salvas (só na origem, por enquanto). */
   @Input() salvas = true;
+  /** Pasta do projeto: as salvas moram em `<projeto>/conexoes.json`. */
+  @Input() projetoDir = '.';
   estado = signal('');
   bancos = signal<string[]>([]);
   schemasList = signal<string[]>([]);
@@ -203,18 +209,18 @@ export class ConexaoComponent implements OnInit {
   }
 
   carregarSalvas(): void {
-    this.api.conexoesSalvas().subscribe({
+    this.api.conexoesSalvas(this.projetoDir).subscribe({
       next: (r) => this.salvasLista.set(r.conexoes),
       error: (e) => this.falhou(e, 'Salvas'),
     });
   }
 
   salvarAtual(): void {
-    this.api.salvarConexao(this.apelido.trim(), this.valor).subscribe({
+    this.api.salvarConexao(this.apelido.trim(), this.valor, this.projetoDir).subscribe({
       next: (s) => {
         this.apelido = '';
         this.carregarSalvas();
-        this.toast.ok(`Conexão '${s.apelido}' salva.`);
+        this.toast.ok(`Conexão '${s.apelido}' salva no projeto.`);
       },
       error: (e) => this.falhou(e, 'Salvar'),
     });
@@ -229,7 +235,7 @@ export class ConexaoComponent implements OnInit {
 
   excluirSalva(s: ConexaoSalva, evento: Event): void {
     evento.stopPropagation();
-    this.api.excluirConexao(s.id).subscribe({
+    this.api.excluirConexao(s.id, this.projetoDir).subscribe({
       next: () => {
         this.carregarSalvas();
         this.toast.ok(`Conexão '${s.apelido}' excluída.`);
