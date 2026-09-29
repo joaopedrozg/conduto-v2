@@ -5,6 +5,7 @@ escondidos do help — a interface lista e executa eles na paleta F1.
 """
 
 import pytest
+from pathlib import Path
 from typer.testing import CliRunner
 
 from conduto import cli
@@ -45,6 +46,21 @@ def test_montar_url_web_codifica_parametros():
 
 def test_montar_url_web_sem_params():
     assert cli._montar_url_web("127.0.0.1", 8080, "/admin", {}) == "http://127.0.0.1:8080/admin"
+
+
+def test_api_respondendo_porta_fechada():
+    assert cli._api_respondendo("127.0.0.1", 9) is False
+
+
+def test_cauda_log_devolve_ultimas_linhas(tmp_path):
+    log = tmp_path / "api.log"
+    log.write_text("\n".join(f"linha {i}" for i in range(30)), encoding="utf-8")
+    cauda = cli._cauda_log(log, linhas=5).splitlines()
+    assert cauda == [f"linha {i}" for i in range(25, 30)]
+
+
+def test_cauda_log_arquivo_ausente():
+    assert cli._cauda_log(Path("nao-existe.log")) == ""
 
 
 def test_help_mostra_como_iniciar_e_esconde_o_resto():

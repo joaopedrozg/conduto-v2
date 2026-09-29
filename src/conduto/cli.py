@@ -597,6 +597,26 @@ def _montar_url_web(host: str, port: int, rota: str, params: dict) -> str:
     return f"{base}?{urlencode(params)}" if params else base
 
 
+def _api_respondendo(host: str, port: int) -> bool:
+    """True se já há uma API conduto respondendo (porta ocupada por ela)."""
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"http://{host}:{port}/api/saude", timeout=1):
+            return True
+    except Exception:
+        return False
+
+
+def _cauda_log(caminho: Path, linhas: int = 15) -> str:
+    """Últimas linhas do log da API (diagnóstico quando ela morre cedo)."""
+    try:
+        texto = Path(caminho).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return ""
+    return "\n".join(texto[-linhas:])
+
+
 def _init_web(
     project_name: Optional[str],
     host: str = "127.0.0.1",
@@ -630,16 +650,30 @@ def _init_web(
         ))
         raise typer.Exit(code=1)
 
+    if _api_respondendo(host, port):
+        # Porta já servindo: sem isso o health-check passaria contra o
+        # servidor velho enquanto o nosso morria no bind ("encerrou sozinha").
+        console.print(erro(
+            "Já há um servidor em http://{host}:{port} (talvez um conduto web antigo). "
+            "Encerre-o ou use --web-port outra porta.", host=host, port=port,
+        ))
+        raise typer.Exit(code=1)
+
     # print() simples: sem terminal o rich quebra no cp1252 (ver `web`).
     print(f"Subindo a Web UI do conduto para o projeto '{nome}'...")
+    import tempfile
+
+    log_api = Path(tempfile.gettempdir()) / f"conduto-web-{port}.log"
+    saida = open(log_api, "w", encoding="utf-8")
     try:
         api = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "conduto.web.app:app",
              "--host", host, "--port", str(port)],
-            stdout=subprocess.DEVNULL,
+            stdout=saida,
             stderr=subprocess.STDOUT,
         )
     except OSError as exc:
+        saida.close()
         console.print(erro("Falha ao iniciar a API: {erro}", erro=exc))
         raise typer.Exit(code=1)
 
@@ -647,8 +681,10 @@ def _init_web(
     for _ in range(50):
         if api.poll() is not None:
             console.print(erro(
-                "A API encerrou antes de responder (porta {port} ocupada?).", port=port
+                "A API encerrou antes de responder. Trecho do log ({log}):\n{cauda}",
+                log=log_api, cauda=_cauda_log(log_api),
             ))
+            saida.close()
             raise typer.Exit(code=1)
         try:
             with urllib.request.urlopen(saude, timeout=1):
@@ -657,7 +693,18 @@ def _init_web(
             time.sleep(0.5)
     else:
         api.terminate()
+        saida.close()
         console.print(erro("A API não respondeu em {url}.", url=saude))
+        raise typer.Exit(code=1)
+
+    # Confirma que quem responde é o nosso processo (evita carona em server velho).
+    time.sleep(1)
+    if api.poll() is not None:
+        console.print(erro(
+            "A API caiu logo após subir. Trecho do log ({log}):\n{cauda}",
+            log=log_api, cauda=_cauda_log(log_api),
+        ))
+        saida.close()
         raise typer.Exit(code=1)
 
     url = _montar_url_web(host, port, "criar", {"nome": nome, "dir": str(alvo.resolve())})
@@ -671,6 +718,7 @@ def _init_web(
     except KeyboardInterrupt:
         print("Encerrando a Web UI e a API...")
     finally:
+        saida.close()
         if api.poll() is None:
             api.terminate()
             try:

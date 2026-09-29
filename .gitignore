@@ -1,8 +1,10 @@
-# Python-generated files
+# Python-generated files (o build Angular em src/conduto/web/dist é
+# versionado de propósito: o install via git precisa dele pronto)
 __pycache__/
 *.py[oc]
 build/
 dist/
+!src/conduto/web/dist/
 wheels/
 *.egg-info
 
