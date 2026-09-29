@@ -15,3 +15,11 @@ export function mensagemErroApi(e: unknown): string {
 
 export const DICA_BACKEND_OFF =
   'Backend indisponível (verifique se o `conduto web` está rodando na porta 8080).';
+
+export function notificarErro(
+  toast: { erro(m: string): void },
+  e: unknown,
+  prefixo: string,
+): void {
+  toast.erro(backendIndisponivel(e) ? DICA_BACKEND_OFF : `${prefixo}: ${mensagemErroApi(e)}`);
+}
