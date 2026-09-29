@@ -42,6 +42,18 @@ jobs:
           python3 .github/scripts/next_release.py "$PART" | tee "$RUNNER_TEMP/release.txt"
           grep -E '^version=' "$RUNNER_TEMP/release.txt" >> "$GITHUB_OUTPUT"
 
+      - name: Set up Node (build do frontend Angular)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build frontend (embarcado no pacote)
+        run: |
+          npm ci --prefix web
+          npm run build --prefix web
+
       - name: Build package
         run: uv build
 

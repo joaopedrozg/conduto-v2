@@ -24,7 +24,7 @@ src/conduto/web/          backend FastAPI (reusa init_exec, ddl, schemas...)
 ## Rodando
 
 ```bash
-# 1. backend (serve a API + o build Angular em web/dist, se existir)
+# 1. backend (serve a API + o build Angular em src/conduto/web/dist, se existir)
 uv sync
 uv run conduto web --no-open        # http://127.0.0.1:8080 (API em /docs)
 
@@ -37,7 +37,7 @@ npm start                           # http://localhost:4200
 > escolha de pasta) e o Administrar lê `?projeto=` ou o último contexto
 > (`localStorage conduto.projeto`).
 
-# 3. build de produção (o backend passa a servir na raiz)
+# 3. build de produção (vai para src/conduto/web/dist e viaja no pacote PyPI)
 npm run build
 ```
 

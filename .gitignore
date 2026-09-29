@@ -23,9 +23,8 @@ wheels/
 .coverage
 htmlcov/
 
-# Frontend Angular
+# Frontend Angular (o build vai para src/conduto/web/dist e viaja no pacote)
 node_modules/
-web/dist/
 web/.angular/
 
 # Projetos de teste locais (scratch)

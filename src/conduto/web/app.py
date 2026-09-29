@@ -28,14 +28,19 @@ def _adapter(tipo: str):
 
 
 def diretorio_frontend() -> Path | None:
-    """Pasta com o build Angular (`web/dist[/browser]`) ou None se não compilado.
+    """Pasta com o build Angular ou None se não compilado.
 
-    O CLI (`conduto init --web`) usa para exigir o build antes de subir a API.
+    Ordem: `src/conduto/web/dist` (viaja dentro do pacote — `pip install`
+    já vem pronto) e depois `web/dist` (atalho de dev no repo).
+    O CLI (`conduto init --web`) usa para exigir o build antes da API.
     """
-    dist = Path(__file__).resolve().parent.parent.parent.parent / "web" / "dist"
-    browser = dist / "browser"
-    estatico = browser if (browser / "index.html").exists() else dist
-    return estatico if (estatico / "index.html").exists() else None
+    aqui = Path(__file__).resolve().parent / "dist"
+    repo = Path(__file__).resolve().parent.parent.parent.parent / "web" / "dist"
+    for dist in (aqui, repo):
+        for candidato in (dist / "browser", dist):
+            if (candidato / "index.html").exists():
+                return candidato
+    return None
 
 
 _CRON_PRESETS = {
