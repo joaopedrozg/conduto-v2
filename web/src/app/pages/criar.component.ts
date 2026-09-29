@@ -24,27 +24,27 @@ import { PastaComponent } from '../components/pasta.component';
     </div>
 
     <div class="card" *ngIf="etapa() === 0">
-      <h2>Início</h2>
-      <label>Nome do projeto</label>
-      <input [(ngModel)]="nomeProjeto" placeholder="meu_projeto" />
-      <label>Pasta de destino (no servidor)</label>
-      <conduto-pasta [(valor)]="projectDir" />
-      <div class="acoes"><button (click)="etapa.set(1)">Avançar →</button></div>
-    </div>
-
-    <div class="card" *ngIf="etapa() === 1">
       <h2>Conexões</h2>
+      <div class="projeto">
+        <div>
+          <label>Projeto</label>
+          <input [(ngModel)]="nomeProjeto" placeholder="meu_projeto" />
+        </div>
+        <div style="flex:1">
+          <label>Pasta de destino (no servidor)</label>
+          <conduto-pasta [(valor)]="projectDir" />
+        </div>
+      </div>
       <div class="cards">
         <section class="conexao"><conduto-conexao [titulo]="'Origem'" [valor]="origem" [sgbds]="sgbds()" [escolherSchema]="false" /></section>
         <section class="conexao"><conduto-conexao [titulo]="'Destino'" [valor]="destino" [sgbds]="sgbds()" /></section>
       </div>
       <div class="acoes">
-        <button class="secundario" (click)="etapa.set(0)">← Voltar</button>
-        <button (click)="carregarTabelas(); etapa.set(2)">Avançar →</button>
+        <button (click)="carregarTabelas(); etapa.set(1)">Avançar →</button>
       </div>
     </div>
 
-    <div class="card" *ngIf="etapa() === 2">
+    <div class="card" *ngIf="etapa() === 1">
       <h2>Tabelas da origem</h2>
       <label><input type="checkbox" [(ngModel)]="gerarAutomatico" /> Gerar a partir do banco (desmarcado = schemas de exemplo)</label>
       <div *ngIf="gerarAutomatico">
@@ -86,12 +86,12 @@ import { PastaComponent } from '../components/pasta.component';
       </div>
       </div>
       <div class="acoes">
-        <button class="secundario" (click)="etapa.set(1)">← Voltar</button>
-        <button (click)="etapa.set(3)">Avançar →</button>
+        <button class="secundario" (click)="etapa.set(0)">← Voltar</button>
+        <button (click)="etapa.set(2)">Avançar →</button>
       </div>
     </div>
 
-    <div class="card" *ngIf="etapa() === 3">
+    <div class="card" *ngIf="etapa() === 2">
       <h2>Schedules</h2>
       <label><input type="checkbox" [(ngModel)]="gerarSchedules" /> Gerar schedules + código Dagster</label>
       <div *ngIf="gerarSchedules">
@@ -104,24 +104,24 @@ import { PastaComponent } from '../components/pasta.component';
       </div>
       <label><input type="checkbox" [(ngModel)]="aplicarDdl" /> Aplicar DDL no destino ao criar</label>
       <div class="acoes">
-        <button class="secundario" (click)="etapa.set(2)">← Voltar</button>
-        <button (click)="etapa.set(4)">Revisar →</button>
+        <button class="secundario" (click)="etapa.set(1)">← Voltar</button>
+        <button (click)="etapa.set(3)">Revisar →</button>
       </div>
     </div>
 
-    <div class="card" *ngIf="etapa() === 4">
+    <div class="card" *ngIf="etapa() === 3">
       <h2>Revisão</h2>
       <p><strong>Projeto:</strong> {{ nomeProjeto }} ({{ projectDir }})</p>
       <p><strong>Origem:</strong> {{ origem.tipo }} &#64; {{ origem.host }}/{{ origem.database }} · schema {{ origem.schema }}</p>
       <p><strong>Destino:</strong> {{ destino.tipo }} &#64; {{ destino.host }}/{{ destino.database }} · schema {{ destino.schema }}</p>
       <p><strong>Tabelas:</strong> {{ tabelasEscolhidas.length }} · <strong>Frequência:</strong> {{ cronFinal() || 'padrão' }}</p>
       <div class="acoes">
-        <button class="secundario" (click)="etapa.set(3)">← Voltar</button>
+        <button class="secundario" (click)="etapa.set(2)">← Voltar</button>
         <button (click)="criar()">Criar projeto</button>
       </div>
     </div>
 
-    <div class="card" *ngIf="etapa() === 5">
+    <div class="card" *ngIf="etapa() === 4">
       <h2>Servidor Dagster</h2>
       <p><strong>Projeto:</strong> {{ projetoCriado || projectDir }}</p>
       <p class="contagem" *ngIf="dagster().pid">PID {{ dagster().pid }} (gerenciado pela Web UI)</p>
@@ -132,7 +132,7 @@ import { PastaComponent } from '../components/pasta.component';
         <button (click)="iniciarDagster()" [disabled]="dagster().rodando || dagster().responde">Subir servidor</button>
         <button class="secundario" (click)="atualizarDagster()">Atualizar status</button>
         <button class="secundario" (click)="pararDagster()" [disabled]="!dagster().rodando">Parar</button>
-        <button class="secundario" (click)="etapa.set(4)">Voltar à revisão</button>
+        <button class="secundario" (click)="etapa.set(3)">Voltar à revisão</button>
       </div>
       <p class="contagem" *ngIf="dagster().externo">Servidor externo: pare pelo terminal que o subiu.</p>
     </div>
@@ -141,6 +141,8 @@ import { PastaComponent } from '../components/pasta.component';
   `,
   styles: [
     '.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }',
+    '.projeto { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }',
+    '.projeto > div:first-child { min-width: 200px; }',
     '.conexao { border: 1px solid var(--borda); border-radius: 8px; padding: 12px; }',
     '.linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }',
     '.linha button { margin: 0; }',
@@ -158,7 +160,7 @@ export class CriarComponent {
   private api = inject(ApiService);
   private toast = inject(ToastService);
   private rota = inject(ActivatedRoute);
-  passos = ['Início', 'Conexões', 'Tabelas', 'Schedules', 'Revisão', 'Servidor'];
+  passos = ['Conexões', 'Tabelas', 'Schedules', 'Revisão', 'Servidor'];
   presets = CRON_PRESETS;
   etapa = signal(0);
   log = signal('');
@@ -234,15 +236,14 @@ export class CriarComponent {
 
   constructor() {
     this.api.sgbds().subscribe((s) => this.sgbds.set(s));
-    // Contexto do `conduto init nome --web`: nome/dir vêm na URL, o local
-    // já está decidido (pula a etapa Início) e o Administrar reutiliza.
+    // Contexto do `conduto init nome --web`: o projeto já vem decidido
+    // na URL (o wizard começa direto nas Conexões, sem etapa Início).
     const params = this.rota.snapshot.queryParamMap;
     const nome = (params.get('nome') || '').trim();
     const dir = (params.get('dir') || '').trim();
     if (nome) {
       this.nomeProjeto = nome;
       this.projectDir = dir || `./${nome}`;
-      this.etapa.set(1);
       this.guardarContexto();
     }
   }
@@ -337,7 +338,7 @@ export class CriarComponent {
           this.guardarContexto();
           this.log.set('Projeto criado: ' + JSON.stringify(resp, null, 2));
           this.toast.ok(`Projeto criado em ${this.projetoCriado}.`);
-          this.etapa.set(5);
+          this.etapa.set(4);
           this.atualizarDagster();
         },
         error: (e) => this.falhou(e, 'Criar projeto'),

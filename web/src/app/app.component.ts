@@ -14,7 +14,7 @@ import { ToastsComponent } from './components/toasts.component';
     </header>
     <div class="layout">
       <aside class="lateral">
-        <a routerLink="/criar" routerLinkActive="ativo">Criar projeto</a>
+        <a routerLink="/criar" routerLinkActive="ativo">Meu pipeline</a>
         <a routerLink="/admin" routerLinkActive="ativo">Administrar</a>
         <nav class="sub">
           <a routerLink="/admin/visao" routerLinkActive="ativo">Visão geral</a>
