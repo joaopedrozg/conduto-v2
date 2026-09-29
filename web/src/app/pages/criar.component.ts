@@ -17,17 +17,17 @@ import { ConexaoComponent } from '../components/conexao.component';
   imports: [CommonModule, FormsModule, ConexaoComponent],
   template: `
     <div class="timeline">
-      <span *ngFor="let p of passos; let i = index" [class]="classePasso(i)">
-        {{ i < etapa() ? '✓' : i === etapa() ? '●' : '○' }} {{ p }}
-      </span>
+      <button
+        type="button"
+        *ngFor="let p of passos; let i = index"
+        [class]="classePasso(i)"
+        (click)="irPara(i)"
+        [title]="i === etapa() ? 'Etapa atual' : 'Ir para ' + p"
+      >{{ i < etapa() ? '✓' : i === etapa() ? '●' : '○' }} {{ p }}</button>
     </div>
 
     <div class="card" *ngIf="etapa() === 0">
       <h2>Conexões</h2>
-      <div class="nav-topo">
-        <span class="contagem">Passo 1 de 5</span>
-        <button (click)="carregarTabelas(); etapa.set(1)">Avançar →</button>
-      </div>
       <div class="cards">
         <section class="conexao"><conduto-conexao [titulo]="'Origem'" [valor]="origem" [sgbds]="sgbds()" [escolherSchema]="false" /></section>
         <section class="conexao"><conduto-conexao [titulo]="'Destino'" [valor]="destino" [sgbds]="sgbds()" [salvas]="false" /></section>
@@ -36,11 +36,6 @@ import { ConexaoComponent } from '../components/conexao.component';
 
     <div class="card" *ngIf="etapa() === 1">
       <h2>Tabelas da origem</h2>
-      <div class="nav-topo">
-        <button class="secundario" (click)="etapa.set(0)">← Voltar</button>
-        <span class="contagem">Passo 2 de 5</span>
-        <button (click)="etapa.set(2)">Avançar →</button>
-      </div>
       <label><input type="checkbox" [(ngModel)]="gerarAutomatico" /> Gerar a partir do banco (desmarcado = schemas de exemplo)</label>
       <div *ngIf="gerarAutomatico">
       <div class="linha">
@@ -85,11 +80,6 @@ import { ConexaoComponent } from '../components/conexao.component';
 
     <div class="card" *ngIf="etapa() === 2">
       <h2>Schedules</h2>
-      <div class="nav-topo">
-        <button class="secundario" (click)="etapa.set(1)">← Voltar</button>
-        <span class="contagem">Passo 3 de 5</span>
-        <button (click)="etapa.set(3)">Avançar →</button>
-      </div>
       <label><input type="checkbox" [(ngModel)]="gerarSchedules" /> Gerar schedules + código Dagster</label>
       <div *ngIf="gerarSchedules">
         <label>Frequência das cargas</label>
@@ -104,24 +94,17 @@ import { ConexaoComponent } from '../components/conexao.component';
 
     <div class="card" *ngIf="etapa() === 3">
       <h2>Revisão</h2>
-      <div class="nav-topo">
-        <button class="secundario" (click)="etapa.set(2)">← Voltar</button>
-        <span class="contagem">Passo 4 de 5</span>
-        <button (click)="criar()">Criar projeto</button>
-      </div>
       <p><strong>Projeto:</strong> {{ nomeProjeto }} ({{ projectDir }})</p>
       <p><strong>Origem:</strong> {{ origem.tipo }} &#64; {{ origem.host }}/{{ origem.database }} · schema {{ origem.schema }}</p>
       <p><strong>Destino:</strong> {{ destino.tipo }} &#64; {{ destino.host }}/{{ destino.database }} · schema {{ destino.schema }}</p>
       <p><strong>Tabelas:</strong> {{ tabelasEscolhidas.length }} · <strong>Frequência:</strong> {{ cronFinal() || 'padrão' }}</p>
+      <div>
+        <button (click)="criar()">Criar projeto</button>
+      </div>
     </div>
 
     <div class="card" *ngIf="etapa() === 4">
       <h2>Servidor Dagster</h2>
-      <div class="nav-topo">
-        <button class="secundario" (click)="etapa.set(3)">← Voltar</button>
-        <span class="contagem">Passo 5 de 5</span>
-        <span></span>
-      </div>
       <p><strong>Projeto:</strong> {{ projetoCriado || projectDir }}</p>
       <p class="contagem" *ngIf="dagster().pid">PID {{ dagster().pid }} (gerenciado pela Web UI)</p>
       <p *ngIf="dagster().responde">No ar em <a [href]="dagster().url" target="_blank">{{ dagster().url }}</a><span *ngIf="dagster().externo"> (externo — subido fora da Web UI)</span></p>
@@ -138,6 +121,11 @@ import { ConexaoComponent } from '../components/conexao.component';
     <pre class="log" *ngIf="log()">{{ log() }}</pre>
   `,
   styles: [
+    '.timeline button { flex: 1; background: none; border: 0; border-top: 3px solid transparent; margin: 0; padding: 10px 4px; font: inherit; font-size: 0.9em; color: var(--neutro); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+    '.timeline button + button { border-left: 1px solid var(--borda); }',
+    '.timeline button.feito { color: var(--ok); border-top-color: var(--ok); }',
+    '.timeline button.atual { color: var(--info); border-top-color: var(--info); font-weight: 700; }',
+    '.timeline button:hover { background: var(--fundo); filter: none; }',
     '.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }',
     '.conexao { border: 1px solid var(--borda); border-radius: 8px; padding: 16px; background: #fff; }',
     '.linha { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }',
@@ -271,6 +259,23 @@ export class CriarComponent {
     return i < this.etapa() ? 'feito' : i === this.etapa() ? 'atual' : '';
   }
 
+  /** Navega pelo clique nos steps; ao entrar em Tabelas carrega se preciso. */
+  irPara(i: number): void {
+    const alvo = Math.max(0, Math.min(i, this.passos.length - 1));
+    this.etapa.set(alvo);
+    if (alvo === 1) {
+      const chave = this.origemChave(this.origem);
+      if (!this.tabelasDisponiveis().length || chave !== this.ultimaOrigem) {
+        this.carregarTabelas();
+      }
+    }
+  }
+
+  private origemChave(c: Credenciais): string {
+    return [c.tipo, c.host, c.port, c.user, c.database].join('|');
+  }
+  private ultimaOrigem = '';
+
   private falhou(e: unknown, prefixo: string): void {
     this.toast.erro(backendIndisponivel(e) ? DICA_BACKEND_OFF : `${prefixo}: ${mensagemErroApi(e)}`);
   }
@@ -283,6 +288,7 @@ export class CriarComponent {
     this.api.tabelas(this.origem, filtroSchemas).subscribe({
       next: (r) => {
         this.tabelasDisponiveis.set(r.tabelas);
+        this.ultimaOrigem = this.origemChave(this.origem);
         const todos = [...new Set(r.tabelas.map((t) => t.schema))].sort();
         const mantidos = this.schemasEscolhidos().filter((s) => todos.includes(s));
         this.schemasEscolhidos.set(mantidos.length && refinando ? mantidos : todos);
